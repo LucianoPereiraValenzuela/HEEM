@@ -1,2 +1,5 @@
 
 .DS_Store
+*.iml
+*.xml
+.ipynb_checkpoints
