@@ -22,44 +22,91 @@ def get_var_form(params):
 	# qc.measure(qr, cr[0])  # Delete this line
 	return qc, cr, qr
 
+# Heisenberg model
+N = 4
+h = 1
+J_x = 2
+J_y = 3
+J_z = 4
+J_s = [J_x, J_y, J_z]
+paulis = ['X', 'Y', 'Z']
+pauli_weights = {}
+
+# External magnetic field
+for i in range(N):
+	index = ['I'] * N
+	index[i] = 'Z'
+	pauli_weights[''.join(index)] = -1 / 2 * h
+
+# Nearest neighbors interaction
+for alpha in range(3):
+	for i in range(N):
+		index = ['I'] * N
+		index[i] = paulis[alpha]
+		index[(i + 1) % N] = paulis[alpha]
+		pauli_weights[''.join(index)] = -1 / 2 * J_s[alpha]
 
 
-# TODO: Write this function
-def meausure_gates(qr, cr, qc, gates):
-	for gate, i in enumerate(gates):
-		if gate == 'X':
-			qc.x(qr[i])
-		elif gate == 'Y':
-			qc.y(qr[i])
-		else:
+# Generate diagonal terms for Z x Z x ....  x Z^(n)
+def generate_factors(n):
+	factors = np.array([1, -1])
+	for i in range(n - 1):
+		factors = np.hstack([factors, factors * -1])
+	return factors
+
+
+def get_distribution(counts, n_qubits):
+	probabilities = np.zeros(2 ** n_qubits)
+	for key in counts.keys():
+		probabilities[int(key, 2)] = counts[key] / NUM_SHOTS
+
+	return probabilities
+
+
+def measure_circuit_factory(pauli_pair):
+	pauli_pair = pauli_pair[::-1]
+	n = len(pauli_pair)  # Number of qubits
+	counter = 0
+	measure_circuit = QuantumCircuit(n, n)
+	for i in range(n):
+		# Change basis of measurement
+		if pauli_pair[i] == 'Z':
 			pass
-	# qc.x(qr[1])
-	qc.measure(qr, cr)
-	# qc.measure_all()
-	return qc
+		elif pauli_pair[i] == 'X':
+			measure_circuit.h(i)
+		elif pauli_pair[i] == 'Y':
+			measure_circuit.sdg(i)
+			measure_circuit.h(i)
+		elif pauli_pair[i] == 'I':
+			continue
+		else:
+			print('Wrong Pauli measure name')
+			return None
 
-
-# TODO: Review
-def get_probability_distribution(counts):
-	output_distr = [v / NUM_SHOTS for v in counts.values()]
-	if len(output_distr) == 1:
-		output_distr.append(1 - output_distr[0])
-	return output_distr
+		measure_circuit.measure(i, counter)
+		counter += 1
+	return measure_circuit, counter
 
 
 # TODO: Measure the energy (Pauli graph) (David)
 def objective_function(params):
-	# Obtain a quantum circuit instance from the parameters
-	qc = get_var_form(params)
-	# Execute the quantum circuit to obtain the probability distribution associated with the current parameters
-	t_qc = transpile(qc, backend)
-	qobj = assemble(t_qc, shots=NUM_SHOTS)
-	result = backend.run(qobj).result()
-	# Obtain the counts for each measured state, and convert those counts into a probability vector
-	output_distr = get_probability_distribution(result.get_counts(qc))
-	# Calculate the cost as the distance between the output distribution and the target distribution
-	cost = sum([np.abs(output_distr[i] - target_distr[i]) for i in range(2)])
-	return cost
+	energy = 0
+	for key in pauli_weights.keys():
+		# Obtain a quantum circuit instance from the parameters
+		qc = get_var_form(params)
+		mc, n_measures = measure_circuit_factory(key)
+		qc_final = qc.compose(mc)
+
+		# Execute the quantum circuit to obtain the probability distribution associated with the current parameters
+		t_qc = transpile(qc_final, backend)
+		qobj = assemble(t_qc, shots=NUM_SHOTS)
+		counts = backend.run(qobj).result().get_counts(qc_final)
+
+		# Obtain the counts for each measured state, and convert those counts into a probability vector
+		distribution = get_distribution(counts, n_measures)
+		energy += np.sum(distribution * generate_factors(n_measures)) * pauli_weights[key]
+
+	return energy
 
 
 optimizer = COBYLA(maxiter=500, tol=1e-4)
