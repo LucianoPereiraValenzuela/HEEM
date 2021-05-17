@@ -3,3 +3,5 @@
 *.iml
 *.xml
 .ipynb_checkpoints
+Codes/test_plot_code_with_me.py
+Codes/my_tests_qiskit.py
