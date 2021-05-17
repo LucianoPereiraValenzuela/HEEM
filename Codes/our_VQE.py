@@ -1,33 +1,40 @@
 import numpy as np
-from qiskit import QuantumCircuit, ClassicalRegister, QuantumRegister
+import matplotlib.pyplot as plt
+from qiskit import QuantumCircuit
 from qiskit import Aer, transpile, assemble
-from qiskit.aqua.components.optimizers import COBYLA
-
-np.random.seed(999999)
-target_distr = np.random.rand(2)
-# We now convert the random vector into a valid probability vector
-target_distr /= sum(target_distr)
+from qiskit.circuit.library import EfficientSU2
+from qiskit.algorithms.optimizers import COBYLA
+from qiskit.aqua.operators.legacy import WeightedPauliOperator
+from qiskit.quantum_info import Pauli
+from qiskit.aqua.algorithms import NumPyEigensolver
 
 backend = Aer.get_backend("qasm_simulator")
 NUM_SHOTS = 10000
+n_rep = 1
+N = 4
+num_vars = N * 2 * (n_rep + 1)
+bound_limits = [(0, 2 * np.pi)] * num_vars
+energy_list = []
 
 
-# TODO: 4 qubits, change var form
-def get_var_form(params):
-	qr = QuantumRegister(2, name="q")
-	cr = ClassicalRegister(2, name='c')
-	qc = QuantumCircuit(qr, cr)
-	qc.h(qr[0])
-	qc.u3(params[0], params[1], params[2], qr[0])
-	# qc.measure(qr, cr[0])  # Delete this line
-	return qc, cr, qr
+def creatre_Pauli_qiskit(pauli):
+	temp = []
+	for key in pauli.keys():
+		temp.append([pauli[key], Pauli(key)])
+	return WeightedPauliOperator(temp)
+
+
+def get_var_form(params, reps=n_rep):
+	qc = QuantumCircuit(N, N)
+	qc_temp = EfficientSU2(N, entanglement='linear', reps=reps).bind_parameters(params)
+	return qc.compose(qc_temp)
+
 
 # Heisenberg model
-N = 4
-h = 1
-J_x = 2
-J_y = 3
-J_z = 4
+h = -1
+J_x = 1
+J_y = 2
+J_z = 3
 J_s = [J_x, J_y, J_z]
 paulis = ['X', 'Y', 'Z']
 pauli_weights = {}
@@ -45,6 +52,11 @@ for alpha in range(3):
 		index[i] = paulis[alpha]
 		index[(i + 1) % N] = paulis[alpha]
 		pauli_weights[''.join(index)] = -1 / 2 * J_s[alpha]
+
+pauli_weights_qiskit = creatre_Pauli_qiskit(pauli_weights)
+result = NumPyEigensolver(pauli_weights_qiskit).run()
+exact_energy = np.real(result.eigenvalues)[0]
+print('The exact energy is {:.3f}'.format(exact_energy))
 
 
 # Generate diagonal terms for Z x Z x ....  x Z^(n)
@@ -88,7 +100,6 @@ def measure_circuit_factory(pauli_pair):
 	return measure_circuit, counter
 
 
-# TODO: Measure the energy (Pauli graph) (David)
 def objective_function(params):
 	energy = 0
 	for key in pauli_weights.keys():
@@ -106,22 +117,24 @@ def objective_function(params):
 		distribution = get_distribution(counts, n_measures)
 		energy += np.sum(distribution * generate_factors(n_measures)) * pauli_weights[key]
 
+	energy_list.append(energy)
+	print('Iteration {}, Energy: {:.3f}'.format(len(energy_list), energy))
+
 	return energy
 
 
-optimizer = COBYLA(maxiter=500, tol=1e-4)
+optimizer = COBYLA(maxiter=500, tol=1e-4, disp=True)
 
-params = np.random.rand(3)
-ret = optimizer.optimize(num_vars=3, objective_function=objective_function, initial_point=params)
+params = np.random.rand(num_vars)
+ret = optimizer.optimize(num_vars=num_vars, objective_function=objective_function, initial_point=params,
+						 variable_bounds=bound_limits)
 
-qc = get_var_form(ret[0])
-t_qc = transpile(qc, backend)
-qobj = assemble(t_qc, shots=NUM_SHOTS)
-counts = backend.run(qobj).result().get_counts(qc)
-output_distr = get_probability_distribution(counts)
-
-print("Target Distribution:", target_distr)
-print("Obtained Distribution:", output_distr)
-print("Output Error (Manhattan Distance):", ret[1])
 print("Parameters Found:", ret[0])
 print("Number of iterations:", ret[-1])
+
+plt.figure()
+plt.plot(energy_list, 'ro', label='VQE')
+plt.hlines(exact_energy, 0, len(energy_list), linestyles='--', colors='g', label='Exact')
+plt.xlim(1, len(energy_list) - 1)
+plt.ylabel('Energy')
+plt.xlabel('Iteration')
