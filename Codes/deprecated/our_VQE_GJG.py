@@ -6,7 +6,7 @@ from qiskit.aqua.components.optimizers import COBYLA
 
 
 # %%
-# TODO: 4 qubits, change var form
+
 def get_var_form(params, n_ry, n_q, Full_ent=False):
 	qr = QuantumRegister(n_q, name="q")
 	cr = ClassicalRegister(n_q, name='c')
@@ -27,7 +27,6 @@ def get_var_form(params, n_ry, n_q, Full_ent=False):
 	return qc, cr, qr
 
 
-# TODO: Write this function
 def meausure_gates(qr, cr, qc, gates):
 	for gate, i in enumerate(gates):
 		if gate == 'X':
@@ -42,7 +41,6 @@ def meausure_gates(qr, cr, qc, gates):
 	return qc
 
 
-# TODO: Review
 def get_probability_distribution(counts):
 	output_distr = [v / NUM_SHOTS for v in counts.values()]
 	if len(output_distr) == 1:
@@ -50,7 +48,6 @@ def get_probability_distribution(counts):
 	return output_distr
 
 
-# TODO: Measure the energy (Pauli graph) (David)
 def objective_function(params):
 	# Obtain a quantum circuit instance from the parameters
 	qc = get_var_form(params)
