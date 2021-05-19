@@ -3,15 +3,15 @@ import matplotlib.pyplot as plt
 from qiskit import QuantumCircuit
 from qiskit import Aer, transpile, assemble
 from qiskit.circuit.library import EfficientSU2
-from qiskit.algorithms.optimizers import COBYLA
+from qiskit.algorithms.optimizers import COBYLA, SPSA
 from qiskit.aqua.operators.legacy import WeightedPauliOperator
 from qiskit.quantum_info import Pauli
 from qiskit.aqua.algorithms import NumPyEigensolver
 
 backend = Aer.get_backend("qasm_simulator")  # Backend for simulation
 NUM_SHOTS = 10000  # Number of shots for each circuit
-n_rep = 1  # Number of repetition for the variational circuit (n_rep + 1: layers of R_y and R_z, n_rep: layers of CNOT)
-N = 5  # Number of qubits
+n_rep = 4  # Number of repetition for the variational circuit (n_rep + 1: layers of R_y and R_z, n_rep: layers of CNOT)
+N = 4  # Number of qubits
 num_vars = N * 2 * (n_rep + 1)  # Number of parameters of the variational circuit, one parameters for each R_z and R_y
 bound_limits = [(0, 2 * np.pi)] * num_vars  # Lower and upper bound limits for each parameter \theta_i: [0, 2 * pi]
 energy_list = []  # List with the energies of each iteration of the VQE algorithm
@@ -126,7 +126,7 @@ def measure_circuit_factory(pauli_string):
 	counter (int): Number of measured qubits.
 	"""
 	pauli_string = pauli_string[::-1]  # Invert the Pauli string, so the first index corresponds to the first qubit
-	n = len(pauli_string)  # Total number of qubits in the circuit
+	n = len(pauli_string)  # Total number of qubits in the circuit (N)
 	counter = 0  # Variable to save the number of measured qubits, that will be >= n.
 	measure_circuit = QuantumCircuit(n, n)  # Create a blank circuit with n quantum and classical registers
 	for q in range(n):  # Iterate over the indices of the Pauli string
@@ -136,8 +136,8 @@ def measure_circuit_factory(pauli_string):
 		elif pauli_string[q] == 'X':  # If the measurement is in the x axis, apply a Hadamard gate
 			measure_circuit.h(q)
 		elif pauli_string[q] == 'Y':  # If the measurement is in the y axis, go to the x basis by S^+, and later to z
-			measure_circuit.sdg(q)
-			measure_circuit.h(q)
+			measure_circuit.sdg(q)  # Y -> X
+			measure_circuit.h(q)  # X -> Z
 		elif pauli_string[q] == 'I':  # If there is no measurement, continue with the next qubit
 			continue
 		else:  # If the Pauli string has a type, return None
@@ -160,9 +160,10 @@ def objective_function(params):
 
 	energy = 0  # Initialize the energy in 0
 
+	qc = get_var_form(params)  # Obtain a quantum circuit instance from the parameters
+
 	for key in pauli_weights.keys():  # Iterate over the pauli string in the Pauli weight
 
-		qc = get_var_form(params)  # Obtain a quantum circuit instance from the parameters
 		mc, n_measures = measure_circuit_factory(key)  # Obtain the measurement circuit from the Pauli string
 		qc_final = qc.compose(mc)  # Combine both circuits
 
@@ -179,16 +180,38 @@ def objective_function(params):
 	energy_list.append(energy)  # Append the new computed energy
 
 	# Print the iteration of the VQE and the energy
-	print('Iteration {}, Energy: {:.3f}'.format(len(energy_list), energy))
+	print('Iteration {}, Energy: {:.4f}'.format(len(energy_list), energy))
 
 	return energy
 
 
+def simplify_pauli_weights(pauli):
+	"""
+	Simplify the Pauli Weights by erasing the Pauli chains with weight equal to 0. This can be further improved by
+	choosing a given tolerance for the minimum weight.
+
+	Parameters
+	----------
+	pauli (dic{'str': complex}): Each keys is a string representing the Pauli chains, e.g., 'IXXZ', and the values are
+							   given by the weight of each Pauli string.
+
+	Returns
+	-------
+	Simplified pauli weights
+	"""
+	temp_dic = pauli.copy()  # Make a copy of the dictionary
+	for key in pauli.keys():  # Iterate over all the Pauli strings
+		if pauli[key] == 0:  # If the weight is equal to 0, erase the measurement
+			temp_dic.pop(key)
+
+	return temp_dic
+
+
 # ------------  Heisenberg model  ------------
-h = -1  # External magnetic field
+h = 0  # External magnetic field
 J_x = 1
-J_y = 2
-J_z = 3
+J_y = 1
+J_z = 1
 J_s = [J_x, J_y, J_z]
 paulis = ['X', 'Y', 'Z']  # Name of Pauli matrices
 pauli_weights = {}  # Dic for the Pauli Weights of the model
@@ -207,6 +230,8 @@ for alpha in range(3):  # Iterate over three directions alpha: [X, Y, Z]
 		index[(i + 1) % N] = paulis[alpha]  # Interaction of the same type (alpha_i, alpha_{i+1}), with PBC
 		pauli_weights[''.join(index)] = -1 / 2 * J_s[alpha]
 
+pauli_weights = simplify_pauli_weights(pauli_weights)
+
 # Solve the system exactly
 pauli_weights_qiskit = create_pauli_qiskit(pauli_weights)
 result = NumPyEigensolver(pauli_weights_qiskit).run()
@@ -214,6 +239,7 @@ exact_energy = np.real(result.eigenvalues)[0]
 print('The exact energy is {:.3f}'.format(exact_energy))
 
 optimizer = COBYLA(maxiter=500, tol=1e-4, disp=True)  # Set up classical optimizer for VQE
+# optimizer = SPSA(maxiter=500)
 
 initial_params = np.random.rand(num_vars)  # Initialize the parameters for the variational circuit with random values
 
