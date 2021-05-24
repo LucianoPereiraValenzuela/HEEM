@@ -262,6 +262,4 @@ def Label2Chain(QubitOp):
     ops = [[ Dict.get(idx2) for idx2 in idx.primitive.to_label()] for idx in QubitOp.oplist ]
     coef = [ idx.coeff for idx in QubitOp.oplist ]        
     
-#     ops = [[ Dict.get(idx2) for idx2 in idx.primitive.to_label()] for idx in QubitOp.oplist ]
-#     coef = [ idx.coeff for idx in QubitOp.oplist ]
     return np.array(ops), coef
