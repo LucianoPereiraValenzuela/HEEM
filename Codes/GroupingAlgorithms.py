@@ -119,8 +119,7 @@ def MeasurementAssignment(Vi,Vj,Mi,AM,WC):#This program is the Algorithm 2 of ht
                 #and if the qubits (l,k) of Vi and Vj are compatible with a certain measurement, the qubits (k,l) of Vi and 
                 #Vj will be compatible with other measurement. I should explain this better. 
                 for per in perm:
-                    if per in WC: 
-                    #This raises an error, so here I have to check the code.
+                    if (per in WC) or (length[Eps]==1): 
                         if (list(Vi[[per]]) in Comp[Eps]) and (list(Vj[[per]]) in Comp[Eps]):
                             PMi.append([Eps,list(per)])
                             for s in per:
