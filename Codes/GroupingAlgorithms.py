@@ -113,11 +113,6 @@ def MeasurementAssignment(Vi,Vj,Mi,AM,WC):#This program is the Algorithm 2 of ht
         for Eps in AM:
             if len(U)>=length[Eps]:
                 perm=list(permutations(U,length[Eps])) #length of each local measurement will be manually programmed
-                perm=list({*map(tuple, map(sorted, perm))}) #This is a code for eliminating the permutations that
-                #are equal up to order for perm. This would reduce the iterations (I believe) without affecting the algorithm,
-                #because the WC array will contain all possible permutations, even those that are equal with disitinct order.
-                #and if the qubits (l,k) of Vi and Vj are compatible with a certain measurement, the qubits (k,l) of Vi and 
-                #Vj will be compatible with other measurement. I should explain this better. 
                 for per in perm:
                     if (per in WC) or (length[Eps]==1): 
                         if (list(Vi[[per]]) in Comp[Eps]) and (list(Vj[[per]]) in Comp[Eps]):
