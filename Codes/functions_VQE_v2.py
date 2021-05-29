@@ -29,7 +29,7 @@ def post_process_results(result, n_q, NUM_SHOTS):
     probs = np.zeros(2 ** n_q)
     for j in range(len(labels)):
         probs[int(labels[j], 2)] += counts[j] / NUM_SHOTS
-
+    
     return probs
 
 
@@ -53,7 +53,7 @@ def measure_circuit_factor(measurements, n_qubits):
             classical_registers.append(ClassicalRegister(len(measure[1])))
             n_measures += len(measure[1])
 
-    qr = QuantumRegister(n_qubits, name='q')
+    qr = QuantumRegister(n_qubits)
     circuit = QuantumCircuit(qr, *classical_registers)
 
     counter = 0
@@ -136,7 +136,7 @@ def objective_function(params, Pauli_weights, Pauli_labels, Groups, Measurements
             diagonal_factors = []
             for j in range(len(measurements)):
                 index_measure, qubits = measurements[j]
-                if 0 <= index_measure <= 3:  # Single qubit measurement
+                if 0 < index_measure <= 3:  # Single qubit measurement
                     if pauli_labels[i][qubits[0]] == 'I' :
                         diagonal_factors.append(factors_list[0][1])
                     else:
@@ -149,10 +149,11 @@ def objective_function(params, Pauli_weights, Pauli_labels, Groups, Measurements
 
             diagonal_factors = generate_diagonal_factors(*diagonal_factors)
             diagonal_factors_all.append( diagonal_factors )
+            
             energy += np.sum(probabilities * diagonal_factors) * pauli_weights[i]
 
-    print('Energy: {}'.format(energy) )
     return energy
+
 
 def probability2expected(Pauli_weights, Pauli_labels, Groups, Measurements):
     
@@ -168,7 +169,7 @@ def probability2expected(Pauli_weights, Pauli_labels, Groups, Measurements):
             diagonal_factors = []
             for j in range(len(measurements)):
                 index_measure, qubits = measurements[j]
-                if 0 <= index_measure <= 3:  # Single qubit measurement
+                if 0 < index_measure <= 3:  # Single qubit measurement
                     if pauli_labels[i][qubits[0]] == 'I' :
                         diagonal_factors.append(factors_list[0][1])
                     else:
@@ -185,20 +186,6 @@ def probability2expected(Pauli_weights, Pauli_labels, Groups, Measurements):
         diagonal_factors_all.append( np.array(diagonal_factors_temp) )
                          
     return diagonal_factors_all
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 def from_string_to_numbers(pauli_labels):
     map = {'I': 0, 'X': 1, 'Y': 2, 'Z': 3}
