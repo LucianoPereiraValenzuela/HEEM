@@ -116,7 +116,6 @@ def objective_function(params, Pauli_weights, Pauli_labels, Groups, Measurements
     energy = 0
     n_qubits = len(Pauli_labels[0])
     
-    diagonal_factors_all = []
     for measurements, group in zip(Measurements, Groups):
         pauli_weights = [Pauli_weights[i] for i in group]
         pauli_labels = [Pauli_labels[i] for i in group]
@@ -130,7 +129,6 @@ def objective_function(params, Pauli_weights, Pauli_labels, Groups, Measurements
         counts = backend.run(q_obj).result().get_counts(qc_final)
 
         probabilities = post_process_results(counts, n_measures, NUM_SHOTS)
-        
         
         for i in range(len(pauli_labels)):
             diagonal_factors = []
@@ -148,14 +146,13 @@ def objective_function(params, Pauli_weights, Pauli_labels, Groups, Measurements
                     diagonal_factors.append(factors_list[index_measure - 3][index])
 
             diagonal_factors = generate_diagonal_factors(*diagonal_factors)
-            diagonal_factors_all.append( diagonal_factors )
             
             energy += np.sum(probabilities * diagonal_factors) * pauli_weights[i]
 
     return energy
 
 
-def probability2expected(Pauli_weights, Pauli_labels, Groups, Measurements):
+def probability2expected( Pauli_weights, Pauli_labels, Groups, Measurements):
     
     n_qubits = len(Pauli_labels[0])    
     diagonal_factors_all = []
@@ -181,11 +178,13 @@ def probability2expected(Pauli_weights, Pauli_labels, Groups, Measurements):
                     diagonal_factors.append(factors_list[index_measure - 3][index])
 
             diagonal_factors = generate_diagonal_factors(*diagonal_factors)
-            diagonal_factors_temp.append( diagonal_factors )
+            diagonal_factors_temp.append( diagonal_factors*pauli_weights[i] )
         
         diagonal_factors_all.append( np.array(diagonal_factors_temp) )
                          
     return diagonal_factors_all
+
+
 
 def from_string_to_numbers(pauli_labels):
     map = {'I': 0, 'X': 1, 'Y': 2, 'Z': 3}
