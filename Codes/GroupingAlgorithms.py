@@ -250,10 +250,23 @@ def Label2Chain(QubitOp):
             'Y' : 2,
             'Z' : 3}
     
-    if type( QubitOp ) == PauliSumOp or type( QubitOp) == TaperedPauliSumOp:
-        QubitOp = qubit_op.to_pauli_op()
+    if type( QubitOp ) == PauliSumOp or type( QubitOp ) == TaperedPauliSumOp:
+        QubitOp = QubitOp.to_pauli_op()
         
-    ops = [[ Dict.get(idx2) for idx2 in idx.primitive.to_label()] for idx in QubitOp.oplist ]
-    coef = [ idx.coeff for idx in QubitOp.oplist ]        
+    label = []
+    ops   = []
+    coef  = []
     
-    return np.array(ops), coef
+    for idx in QubitOp.oplist :
+        label_temp = idx.primitive.to_label() 
+        label.append(label_temp)
+        ops.append( [ Dict.get(idx) for idx in label_temp ])
+        coef.append(idx.coeff)      
+    
+    return np.array(ops), coef, label
+
+def get_backend_conectivity(backend):
+    defaults = backend.defaults()
+    conexions = [ indx for indx in defaults.instruction_schedule_map.qubits_with_instruction('cx') ]
+    return conexions
+
