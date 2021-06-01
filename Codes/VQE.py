@@ -225,7 +225,8 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 
         counts = self.quantum_instance.execute(expected_op).get_counts()
         
-        probabilities = [ post_process_results(counts[j], expected_op[j].num_clbits, self.quantum_instance.backend.options.shots) for j in range(len(counts))]
+        probabilities = [ post_process_results(counts[j], expected_op[j].num_clbits, 
+                                               self.quantum_instance.run_config.shots) for j in range(len(counts))]
 
         ExpectedValue = 0
         for j in range(len(probabilities)) :
