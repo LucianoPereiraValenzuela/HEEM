@@ -75,7 +75,6 @@ def RandomHamiltonian( num_qubits=2, num_paulis=4 ):
     return Hamiltonian
 
 
-
 ###########################
 def Label2Chain(QubitOp):
     """
@@ -181,7 +180,8 @@ def BeH2( distance=1.339, freeze_core=True, remove_orbitals=True, initial_state=
     molecule = 'H 0.0 0.0 -'+str(distance)+'; Be 0.0 0.0 0.0; H 0.0 0.0 '+str(distance)
     
     try:
-        driver = PySCFDriver(molecule)from qiskit_nature.drivers import PyQuanteDriver
+        from qiskit_nature.drivers import PyQuanteDriver
+        driver = PySCFDriver(molecule)
     except:
         
         driver = PyQuanteDriver(molecule)
@@ -189,7 +189,7 @@ def BeH2( distance=1.339, freeze_core=True, remove_orbitals=True, initial_state=
     qmolecule = driver.run()
     
     if remove_orbitals is True :
-        freezeCoreTransfomer = FreezeCoreTransformer( freeze_core=freeze_core, remove_orbitals= [-3] )
+        freezeCoreTransfomer = FreezeCoreTransformer( freeze_core=freeze_core, remove_orbitals= [-1,-3] )
     else :
         freezeCoreTransfomer = FreezeCoreTransformer( freeze_core=freeze_core )
 
@@ -210,7 +210,7 @@ def BeH2( distance=1.339, freeze_core=True, remove_orbitals=True, initial_state=
         mapper = BravyiKitaevMapper()
 
     # The fermionic operators are mapped
-    converter = QubitConverter( mapper=mapper, two_qubit_reduction=True, z2symmetry_reduction='auto',) #1] 
+    converter = QubitConverter( mapper=mapper, two_qubit_reduction=True, z2symmetry_reduction = [1, -1, 1]) #1] 
 
     # The fermionic operators are mapped to qubit operators
     num_particles = (problem.molecule_data_transformed.num_alpha, problem.molecule_data_transformed.num_beta)
