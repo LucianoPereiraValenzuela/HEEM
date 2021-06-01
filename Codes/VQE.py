@@ -165,8 +165,6 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
         
         return circuits
         
-        
-        
     def _circuit_sampler( self, expected_op, params ):
 
         expected_op = [ qci.assign_parameters(params) for qci in expected_op ] # Esto de deberóa poder hacer más eficiente!
