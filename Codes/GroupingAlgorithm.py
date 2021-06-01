@@ -1,12 +1,9 @@
-
+## 01/06/2021 16:54
 
 import numpy as np
 import networkx as nx
 from itertools import permutations
-import time
-
-
-
+# import time
 
 """
 See the report for context of this code. 

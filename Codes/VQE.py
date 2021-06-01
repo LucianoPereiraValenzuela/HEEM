@@ -6,8 +6,9 @@ from typing import Optional, List, Callable, Union, Dict
 import logging
 from time import time
 import numpy as np
-from GroupingAlgorithms import *
+from GroupingAlgorithm import *
 from HEEM_VQE_Functions import *
+from utils import Label2Chain
 from qiskit import ClassicalRegister, QuantumCircuit
 from qiskit.opflow import OperatorBase, StateFn, CircuitStateFn, ListOp, I
 from qiskit.providers import Backend, BaseBackend
@@ -166,9 +167,6 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
         """ set operator """
         self._expect_op = None
         self._check_operator_varform(operator)
-        # Expectation was not passed by user, try to create one
-#         if not self._user_valid_expectation:
-#             self._try_set_expectation_value_from_factory(operator)
         return operator
 #######################    
     
@@ -206,10 +204,8 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
             self._Groups, self._Measurements = grouping( paulis, self._order, self._conectiviy )
             
         elif self._grouping == 'TPB':
-            _, self._Groups, self._Measurements = TPBgrouping( paulis )
-            self._Groups       = [ [ idx2[0] for idx2 in idx1 ] for idx1 in self._Groups ]
-            self._Measurements = [ [ [idx[j][0],[j]] for j in range(num_qubits) ] for idx in self._Measurements ]
-        
+            _, self._Groups, self._Measurements = TPBgrouping( paulis )    
+    
         circuits  = []
         n_measure = []
         for measure in self._Measurements :
