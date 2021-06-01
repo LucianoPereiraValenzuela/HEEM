@@ -19,21 +19,66 @@ from qiskit.circuit.library import RealAmplitudes
 from qiskit.algorithms.optimizers import Optimizer, SLSQP
 from qiskit.algorithms.variational_algorithm import VariationalAlgorithm, VariationalResult
 from qiskit.algorithms.minimum_eigen_solvers.minimum_eigen_solver import MinimumEigensolver, MinimumEigensolverResult
-
+from qiskit.algorithms.exceptions import AlgorithmError
 logger = logging.getLogger(__name__)
 
 class VQE(VariationalAlgorithm, MinimumEigensolver):
+    """
+    Class of the Variationa Quantum Eigensolver.
+    """
+    
     
     def __init__(self,
                  ansatz        : Optional[QuantumCircuit] = None,
                  optimizer     : Optional[Optimizer] = None,
                  initial_point : Optional[np.ndarray] = None,
                  gradient      : Optional[Union[GradientBase, Callable]] = None,
-                 grouping      : Optional[str] = 'Entangled',
+                 grouping      : Optional[str] = 'TPB',
                  order         : Optional[np.ndarray] = [4,3,2,1],
                  conectivity   : Optional[list] = None,
                  callback      : Optional[Callable[[int, np.ndarray], None]] = None,
                  quantum_instance: Optional[Union[QuantumInstance, BaseBackend, Backend]] = AerSimulator(method="statevector") ) -> None:
+        """
+        Parameters.
+        ---------------------------
+        ansatz           : A parameterized circuit used as Ansatz for the wave function. 
+                           By default ansatz = RealAmplitudes(). 
+        optimizer        : A classical optimizer. 
+                           By default optimizer = SLSQP().
+        initial_point    : An optional initial point (i.e. initial parameter values)
+                           for the optimizer. If ``None`` then VQE will look to the ansatz for a preferred
+                           point and if not will simply compute a random one.
+        gradient         : An optional gradient function or operator for optimizer. (Not tested)
+        grouping         : str
+                           Method for grouping the local observables of the Hamiltonian into compatible measurements. 
+                           Two methods are available: tensor product basis ('TPB') and entangled measurements ('Entangled').
+        order            : list( int )
+                           Priority of the bases when grouping local operators in entangled measurements. 
+                           grouping = 'Entangled' is required. The available measurements are:
+                            0 -> Identity
+                            1 -> X
+                            2 -> Y
+                            3 -> Z
+                            4 -> Bell
+                            5 -> Omega_xx
+                            6 -> Omega_yy
+                            7 -> Omega_zz
+                            8 -> Chi
+                            9 -> Pi
+        conectivity      : list( tuples ) or list( list )
+                           The inter-qubit connectivity allowed for entangled measurements. 
+                           grouping = 'Entangled' is required.
+                           As example, consider the 4-qubits device
+                               0--1--2
+                                  |
+                                  3
+                           For this case we have: conectivity = [(0,1),(1,0),(1,2),(1,3),(2,1),(3,1)].
+                           By default connection between all qubits is used. 
+        callback         : Callable( int, np.ndarray )
+                           A callback that can access the intermediate data during the optimization. 
+                           The inputs are the number of evaluations and the evaluated energy.
+        quantum_instance : Quantum Instance or Backend.
+        """
         
         if ansatz is None:
             self.ansatz = RealAmplitudes() 
@@ -46,7 +91,6 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
         # set the initial point to the preferred parameters of the ansatz
         if initial_point is None and hasattr(ansatz, 'preferred_init_points'):
             self.initial_point = ansatz.preferred_init_points
-        
         
         super().__init__(ansatz    = ansatz,
                          optimizer = optimizer,
@@ -133,6 +177,19 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
                              parameter, 
                              operator
                              ):
+        """
+        Generate the ansatz circuit and expectation value measurement, and return their
+        runnable composition. 
+        
+        parameters.
+        ---------------------------
+        parameter : Parameters for the ansatz circuit.
+        operator  : Qubit operator of the Observable.
+        
+        Returns
+        -----------------------
+        circuits  : qiskit circuits to evaluate the energy.
+        """
         
         if isinstance(self.ansatz, QuantumCircuit):
             param_dict = dict(zip(self._ansatz_params, parameter))  # type: Dict
@@ -145,7 +202,6 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
         
         if self._grouping == 'Entangled':
             if self._conectiviy is None :
-                self._conectiviy = list(range(num_qubits))
                 self._conectiviy = list(permutations(list(range(num_qubits)),2))
             self._Groups, self._Measurements = grouping( paulis, self._order, self._conectiviy )
             
