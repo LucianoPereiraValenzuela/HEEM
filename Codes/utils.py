@@ -5,7 +5,17 @@ from qiskit.opflow.list_ops import SummedOp
 from qiskit.quantum_info import Pauli
 from qiskit.opflow.primitive_ops.pauli_sum_op import PauliSumOp
 from qiskit.opflow.primitive_ops.tapered_pauli_sum_op import TaperedPauliSumOp
+from qiskit_nature.circuit.library import HartreeFock
+from qiskit_nature.transformers import FreezeCoreTransformer
+from qiskit_nature.problems.second_quantization.electronic import ElectronicStructureProblem
+from qiskit_nature.mappers.second_quantization import ParityMapper, JordanWignerMapper
+from qiskit_nature.converters.second_quantization.qubit_converter import QubitConverter
+from qiskit.opflow.primitive_ops import Z2Symmetries
+from qiskit.opflow import converters
+from qiskit_nature.drivers import PySCFDriver
 
+    
+#######################################################################    
 def HeisenbergHamiltonian( J=1, H=1, num_qubits=2, neighbours=[(0,1)] ):
     """
     Qiskit operator of the 3-D Heisemberg Hamiltonian of a lattice of spins.
@@ -55,7 +65,7 @@ def HeisenbergHamiltonian( J=1, H=1, num_qubits=2, neighbours=[(0,1)] ):
 
     return Hamiltonian
 
-
+#####################################################
 def RandomHamiltonian( num_qubits=2, num_paulis=4 ):
     
     idxs = np.random.randint(2, size=(2,num_qubits,num_paulis) )
@@ -66,7 +76,7 @@ def RandomHamiltonian( num_qubits=2, num_paulis=4 ):
 
 
 
-
+###########################
 def Label2Chain(QubitOp):
     """
     Transform a string of Pauli matrices into a numpy array.
@@ -102,6 +112,7 @@ def Label2Chain(QubitOp):
     
     return np.array(ops), coef, label
 
+#############
 def get_backend_conectivity(backend):
     """
     Get the conected qubit of q backend. Has to be a quantum computer.
@@ -110,3 +121,131 @@ def get_backend_conectivity(backend):
     conexions = [ indx for indx in defaults.instruction_schedule_map.qubits_with_instruction('cx') ]
     return conexions
 
+def LiH( distance=1.5474, freeze_core=True, remove_orbitals=True, initial_state=False, mapper_type='ParityMapper'):
+    """
+    Qiskit operator of the LiH.
+    """
+    
+    molecule = 'Li 0.0 0.0 0.0; H 0.0 0.0 '+str(distance)
+    
+    try:
+        driver = PySCFDriver(molecule)
+    except:
+        from qiskit_nature.drivers import PyQuanteDriver
+        driver = PyQuanteDriver(molecule)
+    
+    qmolecule = driver.run()
+    
+    if remove_orbitals is True :
+        freezeCoreTransfomer = FreezeCoreTransformer( freeze_core=freeze_core, remove_orbitals= [3,4] )
+    else :
+        freezeCoreTransfomer = FreezeCoreTransformer( freeze_core=freeze_core )
+
+    problem = ElectronicStructureProblem(driver,q_molecule_transformers=[freezeCoreTransfomer])
+    
+    # Generate the second-quantized operators
+    second_q_ops = problem.second_q_ops()
+
+    # Hamiltonian
+    main_op = second_q_ops[0]
+
+    # Setup the mapper and qubit converter
+    if mapper_type == 'ParityMapper':
+        mapper = ParityMapper()
+    elif mapper_type == 'JordanWignerMapper':
+        mapper = JordanWignerMapper()
+    elif mapper_type == 'BravyiKitaevMapper':
+        mapper = BravyiKitaevMapper()
+
+    # The fermionic operators are mapped
+    converter = QubitConverter( mapper=mapper, two_qubit_reduction=True, z2symmetry_reduction='auto',) #1] 
+
+    # The fermionic operators are mapped to qubit operators
+    num_particles = (problem.molecule_data_transformed.num_alpha, problem.molecule_data_transformed.num_beta)
+
+    num_spin_orbitals = 2 * problem.molecule_data_transformed.num_molecular_orbitals
+
+    qubit_op = converter.convert(main_op, num_particles=num_particles)
+
+    if initial_state is False :
+        return qubit_op
+    else:
+        init_state = HartreeFock(num_spin_orbitals, num_particles, converter)
+        return qubit_op , init_state
+
+def BeH2( distance=1.339, freeze_core=True, remove_orbitals=True, initial_state=False, mapper_type='ParityMapper'):
+    """
+    Qiskit operator of the BeH2.
+    """
+    
+    molecule = 'H 0.0 0.0 -'+str(distance)+'; Be 0.0 0.0 0.0; H 0.0 0.0 '+str(distance)
+    
+    try:
+        driver = PySCFDriver(molecule)from qiskit_nature.drivers import PyQuanteDriver
+    except:
+        
+        driver = PyQuanteDriver(molecule)
+    
+    qmolecule = driver.run()
+    
+    if remove_orbitals is True :
+        freezeCoreTransfomer = FreezeCoreTransformer( freeze_core=freeze_core, remove_orbitals= [-3] )
+    else :
+        freezeCoreTransfomer = FreezeCoreTransformer( freeze_core=freeze_core )
+
+    problem = ElectronicStructureProblem(driver,q_molecule_transformers=[freezeCoreTransfomer])
+    
+    # Generate the second-quantized operators
+    second_q_ops = problem.second_q_ops()
+
+    # Hamiltonian
+    main_op = second_q_ops[0]
+
+    # Setup the mapper and qubit converter
+    if mapper_type == 'ParityMapper':
+        mapper = ParityMapper()
+    elif mapper_type == 'JordanWignerMapper':
+        mapper = JordanWignerMapper()
+    elif mapper_type == 'BravyiKitaevMapper':
+        mapper = BravyiKitaevMapper()
+
+    # The fermionic operators are mapped
+    converter = QubitConverter( mapper=mapper, two_qubit_reduction=True, z2symmetry_reduction='auto',) #1] 
+
+    # The fermionic operators are mapped to qubit operators
+    num_particles = (problem.molecule_data_transformed.num_alpha, problem.molecule_data_transformed.num_beta)
+
+    num_spin_orbitals = 2 * problem.molecule_data_transformed.num_molecular_orbitals
+
+    qubit_op = converter.convert(main_op, num_particles=num_particles)
+
+    if initial_state is False :
+        return qubit_op
+    else:
+        init_state = HartreeFock(num_spin_orbitals, num_particles, converter)
+        return qubit_op , init_state
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
