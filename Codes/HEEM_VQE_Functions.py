@@ -7,7 +7,7 @@ maps = [np.array(['XX', 'YY', 'ZZ', 'II']),  # Bell
         np.array(['YY', 'XZ', 'ZX', 'II']),  # Omega yy
         np.array(['ZZ', 'XY', 'YX', 'II']),  # Omega zz
         np.array(['XY', 'YZ', 'ZX', 'II']),  # Chi
-        np.array(['YX', 'ZY', 'XZ', 'II'])]  # Pi
+        np.array(['YX', 'ZY', 'XZ', 'II'])]  # Chi_prime
 
 # Factors for expected value of one qubit, and two qubits (in the correct order for each basis)
 factors_list = [[np.array([1, -1]), np.array([1, 1])],  # One qubit
@@ -22,7 +22,7 @@ factors_list = [[np.array([1, -1]), np.array([1, 1])],  # One qubit
                 [np.array([1, -1, 1, -1]), np.array([-1, 1, 1, -1]), np.array([1, 1, -1, -1]), np.array([1, 1, 1, 1])],
                 # Chi
                 [np.array([-1, 1, 1, -1]), np.array([1, 1, -1, -1]), np.array([1, -1, 1, -1]),
-                 np.array([1, 1, 1, 1])]]  # Pi
+                 np.array([1, 1, 1, 1])]]  # Chi_prime
 
 
 def post_process_results(result, n_q, NUM_SHOTS):
@@ -111,7 +111,7 @@ def measure_circuit_factor(measurements, n_qubits):
     6 -> Omega_yy
     7 -> Omega_zz
     8 -> Chi
-    9 -> Pi
+    9 -> Chi_prime
 
     To ensure the correct functionality of this function each qubit can only be in one of the measurements, so it's only
     measured once. If a qubit is not provided, then it is not measured.
@@ -190,7 +190,7 @@ def measure_circuit_factor(measurements, n_qubits):
             circuit.cnot(qubits[0], qubits[1])
             circuit.h(qubits[0])
         elif measure_label == 9:
-            # Pi Circuit
+            # Chi_prime Circuit
             circuit.u2(0, np.pi / 2, qubits[0])
             circuit.cnot(qubits[0], qubits[1])
             circuit.h(qubits[0])
