@@ -42,11 +42,13 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
         """
         Parameters.
         ---------------------------
-        ansatz           : A parameterized circuit used as Ansatz for the wave function. 
+        ansatz           : Qiskit circuit.
+                           A parameterized circuit used as Ansatz for the wave function. 
                            By default ansatz = RealAmplitudes(). 
-        optimizer        : A classical optimizer. 
+        optimizer        : Classical optimizer. 
                            By default optimizer = SLSQP().
-        initial_point    : An optional initial point (i.e. initial parameter values)
+        initial_point    : np.ndarray
+                           An optional initial point (i.e. initial parameter values)
                            for the optimizer. If ``None`` then VQE will look to the ansatz for a preferred
                            point and if not will simply compute a random one.
         gradient         : An optional gradient function or operator for optimizer. (Not tested)
@@ -218,7 +220,22 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
         return circuits
         
     def _circuit_sampler( self, expected_op, params ):
-
+        """ 
+        Execute the circuits to evalute the expected value of the Hamiltonian.
+        
+        Parameters.
+        --------------
+        expected_op : list( qiskit circuits )
+                      Circuits to evaluate the energy (wave function+measurements).
+        params      : np.narray
+                      Parameters of the circuits.
+        
+        Returns.
+        ------------------------
+        ExpectedValue : float
+                        Expected value.
+        
+        """
         expected_op = [ qci.assign_parameters(params) for qci in expected_op ] # Esto de deberóa poder hacer más eficiente!
 #         t_qc   = transpile( expected_op, self.quantum_instance )
 #         qc_obj = assemble( t_qc, shots=NUM_SHOTS)
@@ -238,6 +255,21 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
         return ExpectedValue
         
     def _energy_evaluation( self, parameters ) :
+        """
+        Evaluate energy at given parameters for the ansatz.
+        This is the objective function to be passed to the optimizer that is used for evaluation..
+        
+        Parameters.
+        ---------------------
+        parameters : np.narray
+                     Parameters of the circuits.
+                    
+        Returns.
+        -------------------
+        means : float
+                Expected value.
+        
+        """
 
         num_parameters = self.ansatz.num_parameters
         if num_parameters == 0:
@@ -260,6 +292,27 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
                                     operator: OperatorBase,
                                     ) -> MinimumEigensolverResult:
         
+        """
+        Execute the VQE for a given Hamiltonian.
+        
+        Parameters.
+        ---------------------------
+        operator : OperatosBase
+                   Hamiltonian.
+                   
+        Returns.
+        -------------------------
+        self._ret : Qiskit Results.
+                    Results of the VQE. It includes:
+                    'aux_operator_eigenvalues'
+                    'cost_function_evals'
+                    'eigenstate'
+                    'eigenvalue'
+                    'optimal_point'
+                    'optimal_value'
+                    'optimizer_evals'
+                    'optimizer_time'
+        """
         
         operator = self._check_operator(operator)
         
