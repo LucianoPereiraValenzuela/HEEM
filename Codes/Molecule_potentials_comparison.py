@@ -67,7 +67,7 @@ def molecule(d, quantum_instance, conectivity):
     
     E[1]  = solver_TPB.compute_minimum_eigenvalue(qubit_op).eigenvalue.real
     E[2]  = solver_ENT.compute_minimum_eigenvalue(qubit_op).eigenvalue.real
-    E[3]= solver_HEEM.compute_minimum_eigenvalue(qubit_op).eigenvalue.real
+    E[3]  = solver_HEEM.compute_minimum_eigenvalue(qubit_op).eigenvalue.real
     
     return E
 
