@@ -257,29 +257,3 @@ def probability2expected(Pauli_weights, Pauli_labels, Groups, Measurements):
         diagonal_factors_all.append(np.array(diagonal_factors_temp))
 
     return diagonal_factors_all
-
-
-def from_string_to_numbers(pauli_labels):
-    """
-    Function that transform a set of pauli string from the str convention ('IXYZ'), to the number convention (0123).
-
-    Parameter
-    ---------
-    pauli_labels: list
-        List with the pauli string written as a string.
-
-    Return
-    ------
-    PS: array
-        Pauli strings in the number convention.
-    """
-    map_str_int = {'I': 0, 'X': 1, 'Y': 2, 'Z': 3}  # Map between str and int conventions
-    PS = []  # Initialize the Pauli string for int convention
-
-    for label in pauli_labels:  # Iterate over all the given pauli strings
-        temp = []
-        for letter in label:  # Map each element of a Pauli string
-            temp.append(map_str_int[letter])
-
-        PS.append(np.array(temp))
-    return np.array(PS)

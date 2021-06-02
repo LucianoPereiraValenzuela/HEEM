@@ -6,6 +6,10 @@ from IPython import get_ipython
 from tqdm import tqdm
 from tqdm.notebook import tqdm_notebook
 import sys
+from utils import Label2Chain
+from qiskit.opflow.list_ops import SummedOp
+from qiskit.quantum_info import Pauli
+from qiskit.opflow.primitive_ops import PauliOp
 
 """
 See the report for context of this code. 
@@ -297,7 +301,7 @@ def grouping(PS, AM, WC):
     Measurement: list
         The element in position i is a list which represents measurement assigned to the group i. Each of these list is
         a list of partial measurements. Each partial measurements is a list of two elements. The first of these elements
-         encodes the partial measurement assigned and the second the qubits where it should performed.
+        encodes the partial measurement assigned and the second the qubits where it should performed.
     """
 	PG = PauliGraph(PS)
 	SV = sorted(PG.degree, key=lambda x: x[1], reverse=True)  # Sorted Vertices by decreasing degree.
@@ -406,91 +410,86 @@ def n_groups(PS, AM, WC):
 	return len(Groups)
 
 
-def gruping_master(PS, AM, WC, monte_carlo=True, n_mc=500, progress_bar=True):
+def grouping_shuffle(operator, AM, WC, n_mc=500, progress_bar=True):
 	"""
 	Shuffle the order for the pauli strings randomly a given number of times and choose the ordering with less number of
 	groups.
 
     Parameters
     ----------
-    PS: array (n, M)
-        Pauli strings, each row represents a Pauli string while each the column represents a qubit. Thus, n is the
-        number of Pauli strings and N is the number of qubits.
+    operator: SumOp
+        Operator with the Pauli strings to group.
     AM: list
         It is the list of the admissible measurements considered. Regarding our numerical encoding, it is a list of
         integers from 1 to 9. The order of the list encodes the preference of measurement assignment. For instance, the
         first measurement appearing in this list will be the one that would be preferentially assigned.
     WC: list
         It is a list of tuples. Each tuple represents a set of well connected qubits.
-	monte_carlo: Bool (optional)
-		Use the Monte Carlo method if true (default), otherwise just compute the grouping with the default order
+
 	n_mc: int (optional)
 		Number of Monte Carlo random orderings.
 	progress_bar: Bool (optional)
-	If True then print the progress bar for the computation of random orderings. If False, then nothing is print.
+		If True then print the progress bar for the computation of random orderings. If False, then nothing is print.
 
 	Returns
 	-------
-	Groups: list
-		The element in the position i is a list with the indexes of strings assigned to group i, i.e, the strings of
-		 group i.
-	Measurement: list
-		The element in position i is a list which represents measurement assigned to the group i. Each of these list is
-		 a list of partial measurements. Each partial measurements is a list of two elements. The first of these
-		 elements encodes the partial measurement assigned and the second the qubits where it should performed.
+	operator: SumOp
+		Rearrange Pauli strings that obtain the best grouping for the number of Monte Carlo shots provided.
 	"""
-	if not monte_carlo:
-		return gruping_master(PS, AM, WC)  # Groups with default order
-	else:
-		orders = []
-		order = np.arange(len(PS))  # Default order
-		args = []
-		results = []
 
-		for i in range(n_mc):
-			if i != 0:
-				np.random.shuffle(order)  # Shuffle randomly the Pauli strings
-			orders.append(np.copy(order))
-			args.append([i, n_groups, [PS[order], AM, WC]])
+	PS, weigths, labels = Label2Chain(operator)
 
-		if progress_bar:  # initialize the progress bar, depending if the instance is in a Jupyter notebook or not
-			if isnotebook():
-				pbar = tqdm_notebook(total=n_mc, desc='Computing optimal order')
-			else:
-				pbar = tqdm(total=n_mc, desc='Computing optimal order', file=sys.stdout, ncols=90,
-				            bar_format='{l_bar}{bar}{r_bar}')
+	orders = []
+	order = np.arange(len(PS))  # Default order
+	args = []
+	results = []
 
-		pool = Pool()  # Initialize the multiprocessing
-		for i, result in enumerate(pool.imap_unordered(unpack_functions, args, chunksize=1), 1):
-			results.append(result)  # Save the result
-			if progress_bar:
-				pbar.update()
+	for i in range(n_mc):
+		if i != 0:
+			np.random.shuffle(order)  # Shuffle randomly the Pauli strings
+		orders.append(np.copy(order))
+		args.append([i, n_groups, [PS[order], AM, WC]])
 
+	if progress_bar:  # initialize the progress bar, depending if the instance is in a Jupyter notebook or not
+		if isnotebook():
+			pbar = tqdm_notebook(total=n_mc, desc='Computing optimal order')
+		else:
+			pbar = tqdm(total=n_mc, desc='Computing optimal order', file=sys.stdout, ncols=90,
+			            bar_format='{l_bar}{bar}{r_bar}')
+
+	pool = Pool()  # Initialize the multiprocessing
+	for i, result in enumerate(pool.imap_unordered(unpack_functions, args, chunksize=1), 1):
+		results.append(result)  # Save the result
 		if progress_bar:
-			pbar.close()
+			pbar.update()
 
-		pool.terminate()
-		results = sort_solution(results)  # Sort the async results
+	if progress_bar:
+		pbar.close()
 
-		number_groups = []
-		for result in results:
-			number_groups.append(result)
+	pool.terminate()
+	results = sort_solution(results)  # Sort the async results
 
-		index = np.argmin(number_groups)
+	number_groups = []
+	for result in results:
+		number_groups.append(result)
 
-		print('The original order gives {} groups'.format(number_groups[0]))
-		print('The best order found gives {} groups'.format(number_groups[index]))
+	index = np.argmin(number_groups)
 
-		order = orders[index]
+	print('The original order gives {} groups'.format(number_groups[0]))
+	print('The best order found gives {} groups'.format(number_groups[index]))
 
-		Groups, Measurements = grouping(PS[order], AM, WC)  # Obtain the groups and measurements for the best case
+	order = orders[index]
 
-		# Remap the Pauli strings so the initial order is conserved
-		for i in range(len(Groups)):
-			for j in range(len(Groups[i])):
-				Groups[i][j] = order[Groups[i][j]]
+	operator = SummedOp([PauliOp(Pauli(labels[order[j]]), weigths[order[j]]) for j in range(len(order))])
 
-		return Groups, Measurements
+	# Groups, Measurements = grouping(PS[order], AM, WC)  # Obtain the groups and measurements for the best case
+	#
+	# # Remap the Pauli strings so the initial order is conserved
+	# for i in range(len(Groups)):
+	# 	for j in range(len(Groups[i])):
+	# 		Groups[i][j] = order[Groups[i][j]]
+
+	return operator
 
 
 def isnotebook():
