@@ -138,7 +138,7 @@ def TPBgrouping(PS):
 
     Parameters
     ----------
-    PS: array (n, M)
+    PS: array (n, N)
         Pauli strings, each row represents a Pauli string while each the column represents a qubit. Thus, n is the
         number of Pauli strings and N is the number of qubits.
 
