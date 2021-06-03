@@ -81,6 +81,10 @@ import matplotlib.pyplot as plt
 energies = solver.energies
 plt.plot(energies)
 ```
+
+![test_HEEM](https://user-images.githubusercontent.com/11279156/120721367-fb656c80-c4cd-11eb-96a5-e5bbb060f8a3.jpg)
+
+
 For more examples, look at the [Examples](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Codes/examples) and [Test](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Codes/tests) folders.
 
 ## References
