@@ -12,7 +12,7 @@ Hardware-efficient entangled measurements (HEEM) are measurements that take adva
 
 This is a library to implement the VQE using HEEM to estimate the energy.
 
-
+## References
 [1] Nature 549, 242 (2017).   
 [2] Npj Quantum Information 6, 56 (2020).  
 [3] Phys. Rev. A 101, 062322 (2020).
