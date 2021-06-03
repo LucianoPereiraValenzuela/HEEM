@@ -81,7 +81,7 @@ import matplotlib.pyplot as plt
 energies = solver.energies
 plt.plot(energies)
 ```
-For more examples, look at the [Examples](examples) and [Test](test) folders.
+For more examples, look at the [Examples](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Codes/examples) and [Test](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Codes/tests) folders.
 
 ## References
 [1] Nature 549, 242 (2017).   
