@@ -10,6 +10,7 @@ from utils import Label2Chain
 from qiskit.opflow.list_ops import SummedOp
 from qiskit.quantum_info import Pauli
 from qiskit.opflow.primitive_ops import PauliOp
+from utils import unpack_functions,sort_solution
 
 """
 See the report for context of this code. 
