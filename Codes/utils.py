@@ -10,6 +10,7 @@ from qiskit_nature.problems.second_quantization.electronic import ElectronicStru
 from qiskit_nature.mappers.second_quantization import ParityMapper, JordanWignerMapper, BravyiKitaevMapper
 from qiskit_nature.converters.second_quantization.qubit_converter import QubitConverter
 from qiskit_nature.drivers import PySCFDriver
+from IPython import get_ipython
 
 
 def HeisenbergHamiltonian(J=1, H=1, num_qubits=2, neighbours=[(0, 1)]):
@@ -274,7 +275,6 @@ def BeH2(distance=1.339, freeze_core=True, remove_orbitals=True, initial_state=F
 		driver = PyQuanteDriver(molecule)
 
 	qmolecule = driver.run()
-
 	if remove_orbitals is True:
 		freezeCoreTransfomer = FreezeCoreTransformer(freeze_core=freeze_core, remove_orbitals=[-1, -3])
 	else:
@@ -354,3 +354,23 @@ def sort_solution(data):
 		sorted_sol[index] = temp  # Save the result in the correct element
 
 	return sorted_sol
+
+
+def isnotebook():
+	"""
+	Check if the script is been running in a jupyter notebook instance
+
+	Return
+	------
+	True is the instance is a Jupyter notebook, false in other cases
+	"""
+	try:
+		shell = get_ipython().__class__.__name__
+		if shell == 'ZMQInteractiveShell':
+			return True  # Jupyter notebook or qtconsole
+		elif shell == 'TerminalInteractiveShell':
+			return False  # Terminal running IPython
+		else:
+			return False  # Other type (?)
+	except NameError:
+		return False  # Probably standard Python interpreter

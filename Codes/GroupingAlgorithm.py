@@ -2,11 +2,10 @@ import numpy as np
 import networkx as nx
 from itertools import permutations
 from multiprocessing import Pool
-from IPython import get_ipython
 from tqdm import tqdm
 from tqdm.notebook import tqdm_notebook
 import sys
-from utils import Label2Chain
+from utils import Label2Chain, sort_solution, unpack_functions, isnotebook
 from qiskit.opflow.list_ops import SummedOp
 from qiskit.quantum_info import Pauli
 from qiskit.opflow.primitive_ops import PauliOp
@@ -276,7 +275,7 @@ def MeasurementAssignment(Vi, Vj, Mi, AM, WC):
 	return UMi, True
 
 
-def grouping(PS, AM, WC):
+def grouping(PS, AM, WC=None):
 	"""
     Given a set of Pauli strings (PS), this function make groups of Paulis assigning the admissible measurements
     given as an input (AM) on the well connected qubits (WC).
@@ -307,6 +306,8 @@ def grouping(PS, AM, WC):
 	SV = sorted(PG.degree, key=lambda x: x[1], reverse=True)  # Sorted Vertices by decreasing degree.
 	n = np.size(PS[:, 0])
 	N = np.size(PS[0, :])
+	if WC is None:
+		WC = list(permutations(list(range(N)), 2))
 	AS = []  # List of strings with assigned measurement
 	Groups = []
 	Measurements = []
@@ -447,23 +448,3 @@ def grouping_shuffle(operator, AM, WC, n_mc=500, progress_bar=True):
 	# 		Groups[i][j] = order[Groups[i][j]]
 
 	return operator
-
-
-def isnotebook():
-	"""
-	Check if the script is been running in a jupyter notebook instance
-
-	Return
-	------
-	True is the instance is a Jupyter notebook, false in other cases
-	"""
-	try:
-		shell = get_ipython().__class__.__name__
-		if shell == 'ZMQInteractiveShell':
-			return True  # Jupyter notebook or qtconsole
-		elif shell == 'TerminalInteractiveShell':
-			return False  # Terminal running IPython
-		else:
-			return False  # Other type (?)
-	except NameError:
-		return False  # Probably standard Python interpreter

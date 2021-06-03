@@ -37,9 +37,10 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 	             grouping: Optional[str] = 'TPB',
 	             order: Optional[np.ndarray] = [4, 3, 2, 1],
 	             conectivity: Optional[list] = None,
-	             callback: Optional[Callable[[int, np.ndarray], None]] = None,
+	             callback: Optional[Callable[[int, np.ndarray, float, None], None]] = None,
 	             quantum_instance: Optional[Union[QuantumInstance, BaseBackend, Backend]] = AerSimulator(
-		             method="statevector")) -> None:
+		             method="statevector"),
+	             transpile: Optional[bool] = False) -> None:
 		"""
 		Parameters
 		----------
@@ -70,18 +71,20 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 				7 -> Omega_zz
 				8 -> Chi
 				9 -> Chi_prime
-		conectivity: list(tuples) or list(list) (optional)
+		connectivity: list(tuples) or list(list) (optional)
 			The inter-qubit connectivity allowed for entangled measurements. grouping = 'Entangled' is required.
 			As example, consider the 4-qubits device
 							   0--1--2
 								  |
 								  3
-			For this case we have: conectivity = [(0,1),(1,0),(1,2),(1,3),(2,1),(3,1)]. By default connection between
+			For this case we have: connectivity = [(0,1),(1,0),(1,2),(1,3),(2,1),(3,1)]. By default connection between
 			all qubits is used.
 		callback: Callable(int, np.ndarray) (optional)
 			A callback that can access the intermediate data during the optimization.  The inputs are the number of
-			evaluations and the evaluated energy.
+			evaluations, the parameters of the given iteration, and the evaluated energy.
 		quantum_instance: Quantum Instance or Backend.
+		transpile: Bool (optional)
+			To perform a transpile before executing the circuits
 		"""
 
 		if ansatz is None:
@@ -108,6 +111,8 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 		self._grouping = grouping
 		self._eval_count = 0
 		self._callback = callback
+		self._transpile = transpile
+		self.energies = []
 		logger.info(self.print_settings())
 
 	@property
@@ -216,6 +221,31 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 
 		return circuits
 
+	def number_cnots(self, operator=None):
+		try:
+			self._expect_op[0]
+		except:
+			self._expect_op = self.construct_expectation(self._ansatz_params, operator)
+
+		circuits = self._expect_op
+		circuits = self.quantum_instance.transpile(circuits)
+
+		n_cnots = []
+		for circuit in circuits:
+			n_cnots.append(circuit.count_ops()['cx'])
+
+		return n_cnots, circuits
+
+	def number_circuits(self, operator=None):
+		try:
+			self._expect_op[0]
+		except:
+			self._expect_op = self.construct_expectation(self._ansatz_params, operator)
+
+		circuits = self._expect_op
+
+		return len(circuits)
+
 	def _circuit_sampler(self, expected_op, params):
 		"""
 		Execute the circuits to evalute the expected value of the Hamiltonian.
@@ -234,6 +264,8 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 		"""
 		expected_op = [qci.assign_parameters(params) for qci in expected_op]
 
+		if self._transpile:
+			expected_op = self.quantum_instance.transpile(expected_op)
 		counts = self.quantum_instance.execute(expected_op).get_counts()
 
 		probabilities = [post_process_results(counts[j], expected_op[j].num_clbits,
@@ -243,8 +275,10 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 		for j in range(len(probabilities)):
 			ExpectedValue += np.sum(self._prob2Exp[j] @ probabilities[j])
 
+		self.energies.append(ExpectedValue)
+
 		if self._callback is not None:
-			self._callback(ExpectedValue, params)
+			self._callback(self._eval_count, params, ExpectedValue, None)
 
 		return ExpectedValue
 
@@ -280,7 +314,7 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 
 		return means
 
-	def compute_minimum_eigenvalue(self, operator: OperatorBase, ) -> MinimumEigensolverResult:
+	def compute_minimum_eigenvalue(self, operator: OperatorBase) -> MinimumEigensolverResult:
 
 		"""
 		Execute the VQE for a given Hamiltonian.
