@@ -268,10 +268,9 @@ def BeH2(distance=1.339, freeze_core=True, remove_orbitals=True, initial_state=F
 	molecule = 'H 0.0 0.0 -' + str(distance) + '; Be 0.0 0.0 0.0; H 0.0 0.0 ' + str(distance)
 
 	try:
-		from qiskit_nature.drivers import PyQuanteDriver
 		driver = PySCFDriver(molecule)
 	except:
-
+		from qiskit_nature.drivers import PyQuanteDriver
 		driver = PyQuanteDriver(molecule)
 
 	qmolecule = driver.run()
@@ -312,3 +311,46 @@ def BeH2(distance=1.339, freeze_core=True, remove_orbitals=True, initial_state=F
 	else:
 		init_state = HartreeFock(num_spin_orbitals, num_particles, converter)
 		return qubit_op, init_state
+
+
+def unpack_functions(pack):
+	"""
+	Unpack the list where the first element is the index of the async execution, the second index in the function to
+	run, the third index are the function variables, and the last index (if provided) are the optional arguments.
+
+	Parameter
+	---------
+	pack: list
+		List with all the data
+
+	 Return
+	 ------
+	 Result of the function
+	"""
+	if len(pack) < 4:  # If no optional arguments are provided
+		pack.append({})
+	return [pack[0], pack[1](*pack[2], **pack[3])]
+
+
+def sort_solution(data):
+	"""
+	Function to sort the data obtained for a parallel computation
+
+	Parameter
+	---------
+	data: list
+		List in which each entry represents one solution of the parallel computation. The elements are
+		also list which contains in the first element the index and in the second one the result of the computation.
+
+	Return
+	------
+	List with the data sorted
+	"""
+	n = len(data)  # Extract the number of computations done
+	sorted_sol = [None] * n  # Empty list with the correct number of elements
+	for i in range(n):  # Iterate over all the elements
+		index = data[i][0]  # Obtain the index of the result
+		temp = data[i][1]  # Obtain the result
+		sorted_sol[index] = temp  # Save the result in the correct element
+
+	return sorted_sol
