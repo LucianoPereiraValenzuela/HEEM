@@ -39,8 +39,7 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 	             conectivity: Optional[list] = None,
 	             callback: Optional[Callable[[int, np.ndarray, float, None], None]] = None,
 	             quantum_instance: Optional[Union[QuantumInstance, BaseBackend, Backend]] = AerSimulator(
-		             method="statevector"),
-	             transpile: Optional[bool] = False) -> None:
+		             method="statevector")) -> None:
 		"""
 		Parameters
 		----------
@@ -83,8 +82,6 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 			A callback that can access the intermediate data during the optimization.  The inputs are the number of
 			evaluations, the parameters of the given iteration, and the evaluated energy.
 		quantum_instance: Quantum Instance or Backend.
-		transpile: Bool (optional)
-			To perform a transpile before executing the circuits
 		"""
 
 		if ansatz is None:
@@ -111,7 +108,6 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 		self._grouping = grouping
 		self._eval_count = 0
 		self._callback = callback
-		self._transpile = transpile
 		self.energies = []
 		self._total_time = 0
 		logger.info(self.print_settings())
@@ -266,8 +262,6 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 		start = time()
 		expected_op = [qci.assign_parameters(params) for qci in expected_op]
 
-		if self._transpile:
-			expected_op = self.quantum_instance.transpile(expected_op)
 		counts = self.quantum_instance.execute(expected_op).get_counts()
 
 		probabilities = [post_process_results(counts[j], expected_op[j].num_clbits,
