@@ -9,9 +9,9 @@ Implementing VQE in NISQ devices is challenging. The two main obstacles are:
 
 Both difficulties have been studied independently. ¿Can they be tackled simultaneously?
 
-Hardware-efficient entangled measurements (HEEM) are measurements that take advantage of entanglement between neighboring qubits according to device’s architecture.
+We propose use Hardware-Efficient Entangled Measurements (HEEM), which are measurements that take advantage of entanglement between neighboring qubits according to device’s architecture. The usage of HEEM reduces the number of measurements needed to perform VQE without compromising the quality of the experiment.
 
-This is a library to implement the VQE using HEEM to estimate the energy.
+In this github we implement the VQE algorithm using HEEM to estimate the energy.
 
 ## Dependences
 
