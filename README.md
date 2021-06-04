@@ -4,12 +4,12 @@
 The Variational Quantum Eigensolver (VQE) is a hybrid quantum-classical algorithm whose aim is to find the ground state of a Quantum Hamiltonian. 
 Implementing VQE in NISQ devices is challenging. The two main obstacles are: 
 
-1) Deep circuits are implemented with low quality. Hardware-efficient circuits implement gates with low error. [1].
-2) Many circuits are required to evaluate the energy. Entanglement allows reducing the number of circuits [2, 3].
+1) Deep circuits are implemented with low quality [1].
+2) Many circuits are required to evaluate the energy [2, 3].
 
 Both difficulties have been studied independently. ¿Can they be tackled simultaneously?
 
-We propose use Hardware-Efficient Entangled Measurements (HEEM), which are measurements that take advantage of entanglement between neighboring qubits according to device’s architecture. The usage of HEEM reduces the number of measurements needed to perform VQE without compromising the quality of the experiment.
+We propose to use Hardware-Efficient Entangled Measurements (HEEM), which are measurements that take advantage of entanglement between neighboring qubits according to the device’s architecture. The usage of HEEM reduces the number of measurements needed to perform VQE without compromising the quality of the experiment.
 
 In this github we implement the VQE algorithm using HEEM to estimate the energy.
 
