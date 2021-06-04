@@ -1,0 +1,5 @@
+# Default color scheme
+# made foy my Master's thesis
+
+# Set color cycle
+axes.prop_cycle : cycler('color', ['007BE0', 'E00000', 'F99E00', '00B253', '4123AD', '563100', 'EA2B00', '00293D', '2CDD00', '00F9AE'])
