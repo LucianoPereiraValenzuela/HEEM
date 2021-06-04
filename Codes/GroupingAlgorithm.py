@@ -289,8 +289,9 @@ def grouping(PS, AM, WC=None):
         It is the list of the admissible measurements considered. Regarding our numerical encoding, it is a list of
         integers from 1 to 9. The order of the list encodes the preference of measurement assignment. For instance, the
         first measurement appearing in this list will be the one that would be preferentially assigned.
-    WC: list
-        It is a list of tuples. Each tuple represents a set of well connected qubits.
+    WC: list (optional)
+        It is a list of tuples. Each tuple represents a set of well connected qubits. If WC is not provided, and all-to-
+        all connectivity is assumed.
 
     Returns
     -------
