@@ -13,6 +13,19 @@ Hardware-efficient entangled measurements (HEEM) are measurements that take adva
 
 This is a library to implement the VQE using HEEM to estimate the energy.
 
+## Dependences
+
+This package needs the following packages:
+
+```bash
+pip install qiskit
+pip install qiskit_nature
+pip install pyscf
+pip install networkx
+pip install tqdm
+pip install joblib
+```
+
 ## Usage
 Here we provide a minimal example for the calculation of the minimum energy at a given distance for the LiH molecule using HEEM (NOTE: This example is designed to be executed in a jupyter notebook instance).
 
