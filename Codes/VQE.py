@@ -113,6 +113,7 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 		self._callback = callback
 		self._transpile = transpile
 		self.energies = []
+		self.total_time = 0
 		logger.info(self.print_settings())
 
 	@property
@@ -262,6 +263,7 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 		ExpectedValue: float
 			Expected value.
 		"""
+		start = time()
 		expected_op = [qci.assign_parameters(params) for qci in expected_op]
 
 		if self._transpile:
@@ -279,6 +281,8 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 
 		if self._callback is not None:
 			self._callback(self._eval_count, params, ExpectedValue, None)
+
+		self.total_time += time() - start
 
 		return ExpectedValue
 
