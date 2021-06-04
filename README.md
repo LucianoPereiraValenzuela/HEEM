@@ -97,7 +97,7 @@ energies = solver.energies
 plt.plot(energies)
 ```
 
-![test](https://user-images.githubusercontent.com/11279156/120758104-b6fbc000-c511-11eb-9ba7-ea6d9a99fb3a.jpg)
+![test](https://user-images.githubusercontent.com/11279156/120759606-78ff9b80-c513-11eb-93d5-257487a6c91d.jpeg)
 
 
 For more examples, look at the [Examples](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Codes/examples) and [Test](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Codes/tests) folders.
