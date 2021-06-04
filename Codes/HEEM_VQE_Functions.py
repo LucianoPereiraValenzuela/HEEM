@@ -1,5 +1,5 @@
 import numpy as np
-from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, transpile, assemble
+from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
 
 # Maps for the order of measurements in each basis
 maps = [np.array(['XX', 'YY', 'ZZ', 'II']),  # Bell
