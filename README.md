@@ -66,9 +66,7 @@ qi = QuantumInstance(backend=backend, coupling_map=coupling_map,
 from qiskit.algorithms.optimizers import SPSA
 from qiskit.circuit.library import EfficientSU2
 
-optimizer = SPSA(maxiter=15![test](https://user-images.githubusercontent.com/11279156/120757985-916eb680-c511-11eb-8f44-07387722e63a.jpeg)
-![test](https://user-images.githubusercontent.com/11279156/120758010-9c294b80-c511-11eb-8777-1ee4ef5e4341.jpeg)
-0, last_avg=1)
+optimizer = SPSA(maxiter=150, last_avg=1)
 ansatz = init_state.compose(EfficientSU2(num_qubits, ['ry', 'rz'],
                                          entanglement='linear', reps=1))
 initial_params = [0.1] * ansatz.num_parameters
