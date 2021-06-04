@@ -113,7 +113,7 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 		self._callback = callback
 		self._transpile = transpile
 		self.energies = []
-		self.total_time = 0
+		self._total_time = 0
 		logger.info(self.print_settings())
 
 	@property
@@ -282,7 +282,7 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 		if self._callback is not None:
 			self._callback(self._eval_count, params, ExpectedValue, None)
 
-		self.total_time += time() - start
+		self._total_time += time() - start
 
 		return ExpectedValue
 
@@ -424,6 +424,9 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 		if self._ret.optimal_point is None:
 			raise AlgorithmError("Cannot find optimal params before running the algorithm.")
 		return self._ret.optimal_point
+
+	def total_time(self):
+		return self._total_time
 
 
 class VQEResult(VariationalResult, MinimumEigensolverResult):
