@@ -5,7 +5,7 @@ The Variational Quantum Eigensolver (VQE) is a hybrid quantum-classical algorith
 Implementing VQE in NISQ devices is challenging. The two main obstacles are: 
 
 1) Deep circuits are implemented with low quality [1].
-2) Many circuits are required to evaluate the energy [2, 3].
+2) Many circuits are required to evaluate the energy [2,3].
 
 Both difficulties have been studied independently. ¿Can they be tackled simultaneously?
 
@@ -25,6 +25,15 @@ pip install networkx
 pip install tqdm
 pip install joblib
 ```
+
+In order to create all the plots with an uniform style we have use the matplotlib styles provided by [SciencePlots](https://github.com/garrettj403/SciencePlots).
+
+## Folders
+This github is organizated ad follows:
+
+In [Articles](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Articles) you can find the main refenreces for this project. In [Figures](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Figures) we include all the plots and scketches used, while in [Report](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Report) there is a PDF with all the technical details of the algoritmhs and the main results of the project. The main folder is [Codes](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Codes), with all the python scrips and jupyter notebooks needed to reproduce the results.
+
+In this last folder you can find the new VQE class in `VQE.py` than implement the HEEM functions of `HEEM_VQE_Functions.py` and the grouping from `GroupingAlgorithm.py`. On `utils.py` we include differents functions of general purpose that will be needed along the project. In [data](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Codes/data) we save all the simulations and experiments. In the folder [deprecated](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Codes/deprecated) there are all versions of the codes, which are no longer in use. In [experiments](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Codes/experiments) is the jupyter notebook used to perform an experiment in a real devide. Finaly, in the folder [tests](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Codes/tests) and [examples](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Codes/examples) there are several notebooks checking the correct funtionality of the different functions and shows some simple examples for their use.
 
 ## Usage
 Here we provide a minimal example for the calculation of the minimum energy at a given distance for the LiH molecule using HEEM (NOTE: This example is designed to be executed in a jupyter notebook instance).
