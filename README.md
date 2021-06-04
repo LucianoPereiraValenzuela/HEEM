@@ -66,7 +66,9 @@ qi = QuantumInstance(backend=backend, coupling_map=coupling_map,
 from qiskit.algorithms.optimizers import SPSA
 from qiskit.circuit.library import EfficientSU2
 
-optimizer = SPSA(maxiter=100, last_avg=1)
+optimizer = SPSA(maxiter=15![test](https://user-images.githubusercontent.com/11279156/120757985-916eb680-c511-11eb-8f44-07387722e63a.jpeg)
+![test](https://user-images.githubusercontent.com/11279156/120758010-9c294b80-c511-11eb-8777-1ee4ef5e4341.jpeg)
+0, last_avg=1)
 ansatz = init_state.compose(EfficientSU2(num_qubits, ['ry', 'rz'],
                                          entanglement='linear', reps=1))
 initial_params = [0.1] * ansatz.num_parameters
@@ -95,7 +97,7 @@ energies = solver.energies
 plt.plot(energies)
 ```
 
-![test_HEEM](https://user-images.githubusercontent.com/11279156/120721367-fb656c80-c4cd-11eb-96a5-e5bbb060f8a3.jpg)
+![test](https://user-images.githubusercontent.com/11279156/120758104-b6fbc000-c511-11eb-9ba7-ea6d9a99fb3a.jpg)
 
 
 For more examples, look at the [Examples](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Codes/examples) and [Test](https://github.com/LucianoPereiraValenzuela/Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements/tree/main/Codes/tests) folders.
