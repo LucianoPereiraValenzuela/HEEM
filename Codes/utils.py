@@ -438,7 +438,7 @@ def swaps(arr, reverse=True):
 
 	Parameters
 	----------
-	arr: ndarray
+	arr: list
 		Original array with unsorted numbers [0, 1, ...., len(arr) - 1]. A given element can not appear twice.
 	reverse: bool (optional, default=True)
 		If reverse=True, sort in descending order, if reverse=False, sort in ascending order
