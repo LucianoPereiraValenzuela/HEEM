@@ -98,111 +98,111 @@ def generate_diagonal_factors(*factors):
 
 	return diagonal_factor
 
+# DEPRECATED
+# def measure_circuit_factor(measurements, n_qubits):
+# 	"""
+# 	Function to create the circuit needed to obtain a given group of measurements. Each measurement will be save in an
+# 	individual classical register. Each measurement coded with an int number. The available measurements are:
+# 	0 -> Identity
+# 	1 -> X
+# 	2 -> Y
+# 	3 -> Z
+# 	4 -> Bell
+# 	5 -> Omega_xx
+# 	6 -> Omega_yy
+# 	7 -> Omega_zz
+# 	8 -> Chi
+# 	9 -> Chi_prime
+#
+# 	To ensure the correct functionality of this function each qubit can only be in one of the measurements, so it's only
+# 	measured once. If a qubit is not provided, then it is not measured.
+#
+# 	Parameters
+# 	----------
+# 	measurements: list(list(int, list(int)))
+# 		List with all the measurements. Each measured is a list in which the first index in the int encoding the
+# 		measurement, and the second element is another list with the indices of the measured qubits. The convention for
+# 		the indices of the qubits is opposite to the qiskit convention. Here the qubit with higher weight is named as
+# 		q_0.
+# 	n_qubits: int
+# 		Total number of qubits in the circuit. This values does not have to coincide with the number of measured qubits.
+#
+# 	Returns
+# 	-------
+# 	circuit: quantum circuit
+# 		Circuit (including quantum and classical registers) with the gates needed to perform the measurements.
+# 	n_measures: int
+# 		Number of measured qubits
+# 	"""
+# 	# Initialize the number of measured qubits to 0 and a list with the classical registers for each measurement
+# 	n_measures = 0
+# 	classical_registers = []
+# 	for measure in measurements:
+# 		if measure[0] != 0:  # If the operation is not the identity
+# 			classical_registers.append(ClassicalRegister(len(measure[1])))
+# 			n_measures += len(measure[1])
+#
+# 	# Create the quantum circuit
+# 	qr = QuantumRegister(n_qubits)
+# 	circuit = QuantumCircuit(qr, *classical_registers)
+#
+# 	counter = 0  # Index for the classical register
+# 	for measure in measurements:  # Iterate over all the measurements
+# 		measure_label, qubits = measure  # Extract the index of the measurement and the measured qubits
+# 		qubits = np.abs(np.array(qubits) - n_qubits + 1)  # Goes to the qiskit convention
+# 		qubits = sorted(qubits)  # Ensure the order of the qubits of entangled measurements
+# 		if measure_label == 0:
+# 			# No measurement
+# 			continue
+# 		elif measure_label == 1:
+# 			# X Circuit
+# 			circuit.h(qubits)
+# 		elif measure_label == 2:
+# 			# Y Circuit
+# 			circuit.sdg(qubits)
+# 			circuit.h(qubits)
+# 			pass
+# 		elif measure_label == 3:
+# 			# Z Circuit
+# 			pass
+# 		elif measure_label == 4:
+# 			# Bell Circuit
+# 			circuit.cnot(qubits[0], qubits[1])
+# 			circuit.h(qubits[0])
+# 		elif measure_label == 5:
+# 			# Omega xx Circuit
+# 			circuit.s(qubits)
+# 			circuit.h(qubits[0])
+# 			circuit.cnot(qubits[0], qubits[1])
+# 			circuit.h(qubits[0])
+# 		elif measure_label == 6:
+# 			# Omega yy Circuit
+# 			circuit.h(qubits[0])
+# 			circuit.cnot(qubits[0], qubits[1])
+# 			circuit.h(qubits[0])
+# 		elif measure_label == 7:
+# 			# Omega zz Circuit
+# 			circuit.s(qubits[0])
+# 			circuit.cnot(qubits[0], qubits[1])
+# 			circuit.h(qubits[0])
+# 		elif measure_label == 8:
+# 			# Chi Circuit
+# 			circuit.u2(np.pi / 2, np.pi, qubits[0])
+# 			circuit.cnot(qubits[0], qubits[1])
+# 			circuit.h(qubits[0])
+# 		elif measure_label == 9:
+# 			# Chi_prime Circuit
+# 			circuit.u2(0, np.pi / 2, qubits[0])
+# 			circuit.cnot(qubits[0], qubits[1])
+# 			circuit.h(qubits[0])
+# 		# circuit.barrier(range(n_qubits))
+# 		circuit.measure(qubits, classical_registers[counter])
+# 		counter += 1
+#
+# 	return circuit, n_measures
+
 
 def measure_circuit_factor(measurements, n_qubits):
-	"""
-	Function to create the circuit needed to obtain a given group of measurements. Each measurement will be save in an
-	individual classical register. Each measurement coded with an int number. The available measurements are:
-	0 -> Identity
-	1 -> X
-	2 -> Y
-	3 -> Z
-	4 -> Bell
-	5 -> Omega_xx
-	6 -> Omega_yy
-	7 -> Omega_zz
-	8 -> Chi
-	9 -> Chi_prime
-
-	To ensure the correct functionality of this function each qubit can only be in one of the measurements, so it's only
-	measured once. If a qubit is not provided, then it is not measured.
-
-	Parameters
-	----------
-	measurements: list(list(int, list(int)))
-		List with all the measurements. Each measured is a list in which the first index in the int encoding the
-		measurement, and the second element is another list with the indices of the measured qubits. The convention for
-		the indices of the qubits is opposite to the qiskit convention. Here the qubit with higher weight is named as
-		q_0.
-	n_qubits: int
-		Total number of qubits in the circuit. This values does not have to coincide with the number of measured qubits.
-
-	Returns
-	-------
-	circuit: quantum circuit
-		Circuit (including quantum and classical registers) with the gates needed to perform the measurements.
-	n_measures: int
-		Number of measured qubits
-	"""
-	# Initialize the number of measured qubits to 0 and a list with the classical registers for each measurement
-	n_measures = 0
-	classical_registers = []
-	for measure in measurements:
-		if measure[0] != 0:  # If the operation is not the identity
-			classical_registers.append(ClassicalRegister(len(measure[1])))
-			n_measures += len(measure[1])
-
-	# Create the quantum circuit
-	qr = QuantumRegister(n_qubits)
-	circuit = QuantumCircuit(qr, *classical_registers)
-
-	counter = 0  # Index for the classical register
-	for measure in measurements:  # Iterate over all the measurements
-		measure_label, qubits = measure  # Extract the index of the measurement and the measured qubits
-		qubits = np.abs(np.array(qubits) - n_qubits + 1)  # Goes to the qiskit convention
-		qubits = sorted(qubits)  # Ensure the order of the qubits of entangled measurements
-		if measure_label == 0:
-			# No measurement
-			continue
-		elif measure_label == 1:
-			# X Circuit
-			circuit.h(qubits)
-		elif measure_label == 2:
-			# Y Circuit
-			circuit.sdg(qubits)
-			circuit.h(qubits)
-			pass
-		elif measure_label == 3:
-			# Z Circuit
-			pass
-		elif measure_label == 4:
-			# Bell Circuit
-			circuit.cnot(qubits[0], qubits[1])
-			circuit.h(qubits[0])
-		elif measure_label == 5:
-			# Omega xx Circuit
-			circuit.s(qubits)
-			circuit.h(qubits[0])
-			circuit.cnot(qubits[0], qubits[1])
-			circuit.h(qubits[0])
-		elif measure_label == 6:
-			# Omega yy Circuit
-			circuit.h(qubits[0])
-			circuit.cnot(qubits[0], qubits[1])
-			circuit.h(qubits[0])
-		elif measure_label == 7:
-			# Omega zz Circuit
-			circuit.s(qubits[0])
-			circuit.cnot(qubits[0], qubits[1])
-			circuit.h(qubits[0])
-		elif measure_label == 8:
-			# Chi Circuit
-			circuit.u2(np.pi / 2, np.pi, qubits[0])
-			circuit.cnot(qubits[0], qubits[1])
-			circuit.h(qubits[0])
-		elif measure_label == 9:
-			# Chi_prime Circuit
-			circuit.u2(0, np.pi / 2, qubits[0])
-			circuit.cnot(qubits[0], qubits[1])
-			circuit.h(qubits[0])
-		# circuit.barrier(range(n_qubits))
-		circuit.measure(qubits, classical_registers[counter])
-		counter += 1
-
-	return circuit, n_measures
-
-
-def measure_circuit_factor_2(measurements, n_qubits):
 	"""
 
 	This functions differs from the original one in the way to map the measurements to the classical register. In order
@@ -308,7 +308,7 @@ def measure_circuit_factor_2(measurements, n_qubits):
 	return circuit, n_measures
 
 
-def probability2expected(Pauli_weights, Pauli_labels, Groups, Measurements, shift=False):
+def probability2expected(Pauli_weights, Pauli_labels, Groups, Measurements, shift=True):
 	"""
 	Compute the prefactors for computing the expected value of a given Hamiltonian with the probabilities measured based
 	on some grouping of measurements.
