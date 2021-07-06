@@ -10,3 +10,4 @@ Codes/deprecated/test_plot_code_with_me.py
 *.pyc
 Codes/Some stuff.nb
 Codes/mis mierdas.ipynb
+*.out

@@ -374,3 +374,101 @@ def isnotebook():
 			return False  # Other type (?)
 	except NameError:
 		return False  # Probably standard Python interpreter
+
+
+def permutate_indices(diagonal_factors, qubit0, qubit1, n_qubits):
+	"""
+	Permute the diagonal factors indices by the interchange of qubit_0 <---> qubit_1, maintaining all other indices the
+	same.
+
+	Parameters
+	----------
+	diagonal_factors: ndarray (2 ** n_qubits)
+		Diagonal factors for the computation of the expected energy
+	qubit0: int
+		Index of the first qubit to swap
+	qubit1: int
+		Index of the second qubit to swap
+	n_qubits: int
+		Number of qubits in the circuit
+
+	Return
+	------
+	temp: ndarray (2 ** n_qubits)
+		Refactor diagonal factors
+	"""
+	temp = np.zeros(2 ** n_qubits)
+
+	# Iterate over all the possible outputs of the circuit
+	for i in range(len(temp)):
+		new = bin(i)[2:]  # New index in binary
+		if len(new) < n_qubits:  # Complete with 0's if the index is not of the correct size
+			new = ''.join(['0']) * (n_qubits - len(new)) + new
+		old = swapPositions(new, qubit0, qubit1)  # Swap the indices of qubit_0 and qubit_1
+		temp[int(new, 2)] = diagonal_factors[int(old, 2)]  # Copy the old diagonal factor in the new position
+
+	return temp
+
+
+def swapPositions(str_variable, pos1, pos2):
+	"""
+	Swap the position of two indices of a given string.
+
+	Parameters
+	----------
+	str_variable: str
+		String to interchange the indices. The length must be >= max(pos1, pos2)
+	pos1: int
+		Index of the first element to swap
+	pos2: int
+		Index of the second element to swap
+
+	Return
+	------
+	Reformat string with the given swaps
+	"""
+	list_variable = list(str_variable)
+	list_variable[pos1], list_variable[pos2] = list_variable[pos2], list_variable[pos1]
+	return ''.join(list_variable)
+
+
+def swaps(arr, reverse=True):
+	"""
+	Compute the needed swaps of two elements to sort a given array in descending (or ascending) order.
+
+	Parameters
+	----------
+	arr: list
+		Original array with unsorted numbers [0, 1, ...., len(arr) - 1]. A given element can not appear twice.
+	reverse: bool (optional, default=True)
+		If reverse=True, sort in descending order, if reverse=False, sort in ascending order
+
+	Returns
+	-------
+	swaps: ndarray (n, 2)
+		Array containing the indices needed to perform a total of n swaps. Each swap corresponds to a given row. The
+		swaps must be performed in the correct order, starting from swaps[0], and finish in swaps[-1].
+	"""
+	# If descending order, reverse the order of the original array
+	if reverse:
+		arr = arr[::-1]
+	n = len(arr)  # Number of elements
+	swaps = []  # List with the swaps
+
+	# Start the algorithm
+	i = 0
+	while i < n:
+		if arr[i] != i:  # If the element is not in the correct locations
+			swaps.append(np.array([i, arr[i]]))
+			# Interchange the element with the correct element in a given location
+			arr[arr[i]], arr[i] = arr[i], arr[arr[i]]
+		else:
+			i += 1
+
+	swaps = np.array(swaps)
+
+	# If descending order, transform the indices in each swap. E.g. if N = 3: 0 --> |0 - 3 + 1| = 2, 1 -> 1 and 2 -> 0
+	if reverse:
+		swaps = np.abs(swaps - n + 1)
+
+	return swaps
