@@ -98,6 +98,7 @@ def generate_diagonal_factors(*factors):
 
 	return diagonal_factor
 
+
 # DEPRECATED
 # def measure_circuit_factor(measurements, n_qubits):
 # 	"""
@@ -252,13 +253,17 @@ def measure_circuit_factor(measurements, n_qubits):
 	cr = ClassicalRegister(n_qubits)
 	circuit = QuantumCircuit(qr, cr)
 
+	measured_qubits = []
+
 	for measure in measurements:  # Iterate over all the measurements
 		measure_label, qubits = measure  # Extract the index of the measurement and the measured qubits
 		qubits = np.abs(np.array(qubits) - n_qubits + 1)  # Goes to the qiskit convention
 		qubits = sorted(qubits)  # Ensure the order of the qubits of entangled measurements
+		measured_qubits.append(qubits)
+
 		if measure_label == 0:
 			# No measurement
-			continue
+			pass
 		elif measure_label == 1:
 			# X Circuit
 			circuit.h(qubits)
@@ -266,7 +271,6 @@ def measure_circuit_factor(measurements, n_qubits):
 			# Y Circuit
 			circuit.sdg(qubits)
 			circuit.h(qubits)
-			pass
 		elif measure_label == 3:
 			# Z Circuit
 			pass
@@ -302,6 +306,12 @@ def measure_circuit_factor(measurements, n_qubits):
 			circuit.h(qubits[0])
 
 		circuit.measure(qubits, qubits)
+
+	measured_qubits = [item for sublist in measured_qubits for item in sublist]
+	qubits = np.arange(n_qubits)
+	for qubit in qubits:
+		if qubit not in measured_qubits:
+			circuit.measure(qubit, qubit)
 
 	# circuit.measure(range(n_qubits), cr)
 
