@@ -747,25 +747,25 @@ def transpile_HEEM(G,C, connected=False):
 	
 	
 #%% Compatibility matrix test
-for k in range(1000):
-	print(k)
-	N=6
-	PS = np.random.randint(0,4,[4,N])
-	# PS = np.array([[0,1,1,3,3,1],[2,2,1,2,0,1],[1,3,3,3,2,0],[0,1,2,1,1,2]])
-	C, _, _ = compatiblities(PS)
+# for k in range(1000):
+# 	print(k)
+# 	N=6
+# 	PS = np.random.randint(0,4,[4,N])
+# 	# PS = np.array([[0,1,1,3,3,1],[2,2,1,2,0,1],[1,3,3,3,2,0],[0,1,2,1,1,2]])
+# 	C, _, _ = compatiblities(PS)
 	
-	# Transpile test
-	G = nx.Graph()
-	G.add_nodes_from(np.arange(7))
-	G.add_edges_from([(0, 1)])
-	G.add_edges_from([(0, 2)])
-	G.add_edges_from([(0, 3)])
-	G.add_edges_from([(2, 4)])
-	G.add_edges_from([(3, 4)])
-	G.add_edges_from([(4, 5)])
-	G.add_edges_from([(4, 6)])
-	G.add_edges_from([(6, 7)])
-	# nx.draw_networkx(G)
+# 	# Transpile test
+# 	G = nx.Graph()
+# 	G.add_nodes_from(np.arange(7))
+# 	G.add_edges_from([(0, 1)])
+# 	G.add_edges_from([(0, 2)])
+# 	G.add_edges_from([(0, 3)])
+# 	G.add_edges_from([(2, 4)])
+# 	G.add_edges_from([(3, 4)])
+# 	G.add_edges_from([(4, 5)])
+# 	G.add_edges_from([(4, 6)])
+# 	G.add_edges_from([(6, 7)])
+# 	# nx.draw_networkx(G)
 	
-	Q = transpile_HEEM(G,C,connected=bool(True*np.mod(k,2)))
+# 	Q = transpile_HEEM(G,C,connected=bool(True*np.mod(k,2)))
 
