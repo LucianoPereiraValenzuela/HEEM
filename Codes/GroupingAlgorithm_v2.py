@@ -416,8 +416,15 @@ def grouping_shuffle(operator, AM, WC, n_mc=500, progress_bar=True):
 
 	Returns
 	-------
-	operator: SumOp
-		Rearrange Pauli strings that obtain the best grouping for the number of Monte Carlo shots provided.
+		Groups: list
+		The element in the position i is a list with the indexes of strings assigned to group i, i.e, the strings of
+		group i.
+	Measurement: list
+		The element in position i is a list which represents measurement assigned to the group i. Each of these list is
+		a list of partial measurements. Each partial measurements is a list of two elements. The first of these elements
+		encodes the partial measurement assigned and the second the qubits where it should performed.
+	# operator: SumOp
+		# Rearrange Pauli strings that obtain the best grouping for the number of Monte Carlo shots provided.
 	"""
 
 	PS, weigths, labels = Label2Chain(operator)
@@ -465,14 +472,14 @@ def grouping_shuffle(operator, AM, WC, n_mc=500, progress_bar=True):
 
 	operator = SummedOp([PauliOp(Pauli(labels[order[j]]), weigths[order[j]]) for j in range(len(order))])
 
-	# Groups, Measurements = grouping(PS[order], AM, WC)  # Obtain the groups and measurements for the best case
-	#
-	# # Remap the Pauli strings so the initial order is conserved
-	# for i in range(len(Groups)):
-	# 	for j in range(len(Groups[i])):
-	# 		Groups[i][j] = order[Groups[i][j]]
+	Groups, Measurements = grouping(PS[order], AM, WC)  # Obtain the groups and measurements for the best case
+	
+	# Remap the Pauli strings so the initial order is conserved
+	for i in range(len(Groups)):
+		for j in range(len(Groups[i])):
+			Groups[i][j] = order[Groups[i][j]]
 
-	return operator
+	return Groups, Measurements #operator
 
 
 #%% Renovations for the grouping algorithm after Qiskit hackaton
