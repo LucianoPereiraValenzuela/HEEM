@@ -227,9 +227,9 @@ def H2(distance=.761, freeze_core=True, remove_orbitals=False, initial_state=Fal
 	if operator is False :
 		return converter, problem
 	else :
-		num_particles = (problem.grouped_property_transformed.get_property("ParticleNumber").num_alpha,
-                         problem.grouped_property_transformed.get_property("ParticleNumber").num_beta)
-# 		num_spin_orbitals = 2 * problem.molecule_data_transformed.num_molecular_orbitals
+		particle_number   = problem.grouped_property_transformed.get_property("ParticleNumber")
+		num_particles     = ( particle_number.num_alpha, particle_number.num_beta )
+		num_spin_orbitals = particle_number.num_spin_orbitals
 		qubit_op = converter.convert(main_op, num_particles=num_particles)         
 		if initial_state is False:
 			return qubit_op 
@@ -306,11 +306,13 @@ def LiH(distance=1.5474, freeze_core=True, remove_orbitals=[3,4], initial_state=
                      problem.grouped_property_transformed.get_property("ParticleNumber").num_beta)
 # 	num_spin_orbitals = 2 * problem.molecule_data_transformed.num_molecular_orbitals
 
-	qubit_op = converter.convert(main_op, num_particles=num_particles)
-
 	if operator is False :
 		return converter, problem
 	else :
+		particle_number   = problem.grouped_property_transformed.get_property("ParticleNumber")
+		num_particles     = ( particle_number.num_alpha, particle_number.num_beta )
+		num_spin_orbitals = particle_number.num_spin_orbitals
+		qubit_op = converter.convert(main_op, num_particles=num_particles)         
 		if initial_state is False:
 			return qubit_op 
 		else:
@@ -381,11 +383,14 @@ def BeH2(distance=1.339, freeze_core=True, remove_orbitals=[3,6], operator=True,
                      problem.grouped_property_transformed.get_property("ParticleNumber").num_beta)
 	# The fermionic operators are mapped
 	converter = QubitConverter(mapper=mapper, two_qubit_reduction=True, z2symmetry_reduction="auto")
-	qubit_op = converter.convert(main_op, num_particles=num_particles)
         
 	if operator is False :
 		return converter, problem
 	else :
+		particle_number   = problem.grouped_property_transformed.get_property("ParticleNumber")
+		num_particles     = ( particle_number.num_alpha, particle_number.num_beta )
+		num_spin_orbitals = particle_number.num_spin_orbitals
+		qubit_op = converter.convert(main_op, num_particles=num_particles)         
 		if initial_state is False:
 			return qubit_op 
 		else:

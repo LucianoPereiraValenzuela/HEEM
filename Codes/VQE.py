@@ -312,7 +312,7 @@ class VQE(VariationalAlgorithm, MinimumEigensolver):
 
 		return means
 
-	def compute_minimum_eigenvalue(self, operator: OperatorBase) -> MinimumEigensolverResult:
+	def compute_minimum_eigenvalue(self, operator: OperatorBase, aux_operators: Optional[List[Optional[OperatorBase]]] = None ) -> MinimumEigensolverResult:
 
 		"""
 		Execute the VQE for a given Hamiltonian.
