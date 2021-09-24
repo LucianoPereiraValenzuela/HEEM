@@ -24,9 +24,8 @@ pip install pyscf
 pip install networkx
 pip install tqdm
 pip install joblib
+pip install SciencePlots
 ```
-
-In order to create all the plots with an uniform style we have use the matplotlib styles provided by [SciencePlots](https://github.com/garrettj403/SciencePlots).
 
 ## Folders
 This github is organizated ad follows:
