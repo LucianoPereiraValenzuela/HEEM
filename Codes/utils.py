@@ -382,7 +382,7 @@ def BeH2(distance=1.339, freeze_core=True, remove_orbitals=[3,6], operator=True,
 	num_particles = (problem.grouped_property_transformed.get_property("ParticleNumber").num_alpha,
                      problem.grouped_property_transformed.get_property("ParticleNumber").num_beta)
 	# The fermionic operators are mapped
-	converter = QubitConverter(mapper=mapper, two_qubit_reduction=True, z2symmetry_reduction="auto")
+	converter = QubitConverter(mapper=mapper, two_qubit_reduction=True)
         
 	if operator is False :
 		return converter, problem
