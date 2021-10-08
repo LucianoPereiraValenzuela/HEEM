@@ -397,6 +397,87 @@ def BeH2(distance=1.339, freeze_core=True, remove_orbitals=[3,6], operator=True,
 			init_state = HartreeFock(num_spin_orbitals, num_particles, converter)
 			return qubit_op, init_state
 
+        
+def H2O(distance=0.9573, freeze_core=True, remove_orbitals=[4], operator=True, initial_state=False, mapper_type='ParityMapper'): #
+	"""
+	Qiskit operator of the BeH2
+
+	Parameters
+	----------
+	distance: float (optional)
+		Distance between atoms of Be and H
+	freeze_core: Bool (optional)
+		If freeze some cores that do highly impact in the energy
+	remove_orbitals: Bool (optional)
+		Remove some orbitals that do no impact in the energy
+	initial_state: Bool (optional)
+		Return the initial Hartree Fock state
+	mapper_type: str (optional)
+		Type of mapping between orbitals and qubits. Available options:
+			'ParityMapper'
+			'JordanWignerMapper'
+			'BravyiKitaevMapper'
+
+	Returns
+	-------
+	qubit_op: SummedOp
+		Pauli strings and coefficients for the Hamiltonian
+	init_state: QuantumCircuit (if initial_state=True)
+		Quantum Circuit with the initial state given by Hartree Fock
+	"""
+    
+	dist1 = distance*0.757/0.9573
+	dist2 = distance*0.586/0.9573
+	molecule = 'O 0.0 0.0 0.0; H '+str(dist1)+' '+str(dist2)+' 0.0; H -'+str(dist1)+' '+str(dist2)+' 0.0' 
+
+	try:
+		driver = PySCFDriver(molecule)
+	except:
+		from qiskit_nature.drivers.second_quantization.pyquanted import PyQuanteDriver
+		driver = PyQuanteDriver(molecule)
+
+	qmolecule = driver.run()
+	if remove_orbitals is False:
+		Transfomer = FreezeCoreTransformer(freeze_core=freeze_core)        
+	else:        
+		Transfomer = FreezeCoreTransformer(freeze_core=freeze_core, remove_orbitals=remove_orbitals)
+
+	problem = ElectronicStructureProblem(driver,transformers=[Transfomer])
+
+	# Generate the second-quantized operators
+	second_q_ops = problem.second_q_ops()
+
+	# Hamiltonian
+	main_op = second_q_ops[0]
+
+	# Setup the mapper and qubit converter
+	if mapper_type == 'ParityMapper':
+		mapper = ParityMapper()
+	elif mapper_type == 'JordanWignerMapper':
+		mapper = JordanWignerMapper()
+	elif mapper_type == 'BravyiKitaevMapper':
+		mapper = BravyiKitaevMapper()
+        
+	num_particles = (problem.grouped_property_transformed.get_property("ParticleNumber").num_alpha,
+                     problem.grouped_property_transformed.get_property("ParticleNumber").num_beta)
+	# The fermionic operators are mapped
+	converter = QubitConverter(mapper=mapper, two_qubit_reduction=True)
+        
+	if operator is False :
+		return converter, problem
+	else :
+		particle_number   = problem.grouped_property_transformed.get_property("ParticleNumber")
+		num_particles     = ( particle_number.num_alpha, particle_number.num_beta )
+		num_spin_orbitals = particle_number.num_spin_orbitals
+		qubit_op = converter.convert(main_op, num_particles=num_particles)         
+		if initial_state is False:
+			return qubit_op 
+		else:
+			init_state = HartreeFock(num_spin_orbitals, num_particles, converter)
+			return qubit_op, init_state
+        
+
+        
 
 def unpack_functions(pack):
 	"""
