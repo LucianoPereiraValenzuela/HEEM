@@ -618,8 +618,39 @@ def transpile_HEEM(G,C, connected=False):
             if i in AQ and j in AQ:
                 C[i,j] = -1
                 C[j,i] = -1
+            elif (i in AQ) and (j in AQ):
+                success = False
+                for I,J in G.edges():
+                    if I not in T and J not in T:
+                        T[i] = I
+                        T[j] = J
+                        AQ.append(i)
+                        AQ.append(j)
+                        C[i,j] = -1
+                        C[j,i] = -1
+                        success = True
+                        
+                        for node in I,J:
+                            neighbors = copy.copy( G.neighbors(node) )
+                            for neighbor in neighbors: #Loop 1
+                                if neighbor in T:
+                                    G.remove_edge(neighbor, node)
+                                    if nx.degree(G,neighbor) == 0:
+                                        s = T.index(neighbor)
+                                        C[s,:] = -1
+                                        C[:,s] = -1
+                            if nx.degree(G,node) == 0:
+                                C[T.index(node),:] = -1
+                                C[:,T.index(node)] = -1
+                                        
+                        break
+                    
+                if success == False:
+                    C[i,j] = -1
+                    C[j,i] = -1
+            
                 
-            elif i in AQ or j in AQ:
+            elif i in AQ or j in AQ:#if we reach this point, then only one of i and j will be in AQ. 
                 
                 if i in AQ:
                     assigned     = i
@@ -653,36 +684,6 @@ def transpile_HEEM(G,C, connected=False):
 
                         break
                     
-            else:
-                success = False
-                for I,J in G.edges():
-                    if I not in T and J not in T:
-                        T[i] = I
-                        T[j] = J
-                        AQ.append(i)
-                        AQ.append(j)
-                        C[i,j] = -1
-                        C[j,i] = -1
-                        success = True
-                        
-                        for node in I,J:
-                            neighbors = copy.copy( G.neighbors(node) )
-                            for neighbor in neighbors: #Loop 1
-                                if neighbor in T:
-                                    G.remove_edge(neighbor, node)
-                                    if nx.degree(G,neighbor) == 0:
-                                        s = T.index(neighbor)
-                                        C[s,:] = -1
-                                        C[:,s] = -1
-                        if nx.degree(G,neighbor) == 0:
-                            C[T.index(node),:] = -1
-                            C[:,T.index(node)] = -1
-                                        
-                        break
-                    
-                if success == False:
-                    C[i,j] = -1
-                    C[j,i] = -1
                     
     elif connected == True :
         # First we assign two qubits, then we build the map from them ensuring that the resulting graph is connected
