@@ -618,7 +618,7 @@ def transpile_HEEM(G,C, connected=False):
             if i in AQ and j in AQ:
                 C[i,j] = -1
                 C[j,i] = -1
-            elif (i in AQ) and (j in AQ):
+            elif (i not in AQ) and (j not in AQ):
                 success = False
                 for I,J in G.edges():
                     if I not in T and J not in T:
