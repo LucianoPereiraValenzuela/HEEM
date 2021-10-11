@@ -856,7 +856,7 @@ def Tcompatiblities(PS,T,G): # Algorithm 4 of Fran's notes.
 # In[68]:
 
 
-def MeasurementAssignmentWithOrder(Vi, Vj, Mi, AM, WC, OQ):
+def MeasurementAssignmentWithOrder(Vi, Vj, Mi, AM, WC, OQ, T):
     """
     
     This function regards the assignment of admissible and efficient measurements Mi to the pauli strings Vi and Vj. 
@@ -896,7 +896,9 @@ def MeasurementAssignmentWithOrder(Vi, Vj, Mi, AM, WC, OQ):
         It is a list of tuples. Each tuple represents a set of well connected qubits.
     OQ: list 
         It is a list of integers. It represents the order of qubits that the algorithm should follow in each iteration.
-
+    T: list
+        T is the theo-phys map chosen. T[i]=j means that the i-theoretical qubit is mapped to the j-physical qubit.
+        
     Returns
     -------
     UMi: list
@@ -1034,7 +1036,7 @@ def groupingWithOrder(PS, G,connected=False):
             for l in range(n):  # We try to make the group of the string i as big as possible
                 j = SV[l][0]
                 if j not in AS:
-                    Mi, S = MeasurementAssignmentWithOrder(PS[i, :], PS[j, :], Mi, AM, WC, OQ)
+                    Mi, S = MeasurementAssignmentWithOrder(PS[i, :], PS[j, :], Mi, AM, WC, OQ,T)
                     if S:
                         AS.append(j)
                         GroupMi.append(j)
