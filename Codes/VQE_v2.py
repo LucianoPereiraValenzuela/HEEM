@@ -10,6 +10,7 @@ from GroupingAlgorithm import *
 from HEEM_VQE_Functions import *
 from utils import Label2Chain
 from qiskit import ClassicalRegister, QuantumCircuit
+from qiskit.providers import Backend, BaseBackend
 from qiskit.opflow import OperatorBase, StateFn
 from qiskit.providers import Backend, BaseBackend
 from qiskit.providers.aer import AerSimulator
@@ -99,10 +100,9 @@ class VQE(MinimumEigensolver):
             self._initial_point = ansatz.preferred_init_points
         else:
             self._initial_point = initial_point
-            
-        if isinstance(quantum_instance, (BaseBackend, Backend)):
-            quantum_instance = QuantumInstance(quantum_instance)
-        self._quantum_instance = quantum_instance
+
+        if isinstance( quantum_instance, Backend) or isinstance( quantum_instance, BaseBackend):
+            quantum_instance = QuantumInstance( backend=quantum_instance )
 
         self._order = order
         self._conectiviy = conectivity
@@ -111,7 +111,7 @@ class VQE(MinimumEigensolver):
         self._callback = callback
         self.energies = []
         self._total_time = 0
-        
+        self._quantum_instance = quantum_instance
         self._gradient = gradient
         self._cost_fn = self._energy_evaluation
         self._ansatz_params = sorted(ansatz.parameters, key=lambda p: p.name)
@@ -651,4 +651,6 @@ class VQEResult(VariationalResult, MinimumEigensolverResult):
     def cost_function_evals(self, value: int) -> None:
         """ Sets number of cost function evaluations """
         self._cost_function_evals = value
+
+
 

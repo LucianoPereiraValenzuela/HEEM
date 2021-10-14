@@ -976,7 +976,7 @@ def MeasurementAssignmentWithOrder(Vi, Vj, Mi, AM, WC, OQ, T):
     return UMi, True
 
 
-def groupingWithOrder(PS, G,connected=False):
+def groupingWithOrder(PS, G, connected=False):
     """
     Given a set of Pauli strings (PS), this function makes groups of PS assigning taking into account the chip's
     connectivity.
