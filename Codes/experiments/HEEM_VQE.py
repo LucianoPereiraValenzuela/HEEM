@@ -47,23 +47,20 @@ def main(backend,
          grouping = 'TPB',
          iters = 10,
          shots = 8192,
-         conectivity = False ):
+         conectivity = None ):
     
+    energies = []
     def callback( evals, params, energy, extra  ): 
         user_messenger.publish( {"evaluation": evals, "energy": energy} )
-    
-    if conectivity is True :
-        conectivity = get_backend_conectivity(backend)
-    else:
-        conectivity = None
+        energies.append(energy)
     
     hamiltonian, init_state = LiH(initial_state=True)
     num_qubits = hamiltonian.num_qubits
     ansatz = init_state.compose( EfficientSU2(num_qubits,['ry','rz'], entanglement='linear', reps=1 ) )
-    optimizer = SPSA( maxiter=iters, last_avg=1 )
+    optimizer = SPSA( maxiter=iters, last_avg=1, learning_rate=3, perturbation=0.2 )
 
     quantum_instance = QuantumInstance( backend, shots = shots )
-    solver = VQE( ansatz, 
+    solver = VQE(ansatz, 
                  optimizer, 
                  pars, 
                  grouping = grouping, 
@@ -72,15 +69,15 @@ def main(backend,
                  callback = callback)
     results = solver.compute_minimum_eigenvalue(hamiltonian)
 
-    return results_to_dict(results)
+    return results_to_dict(results, energies)
 
-def results_to_dict(results):
+def results_to_dict(results, energies):
     
     results_dict = {
-        'optimal_point': results.optimal_point,
+        'optimal_point': list(results.optimal_point),
         'optimal_value': results.optimal_value,
         'optimizer_evals': results.optimizer_evals,
-        'optimizer_time': results.optimizer_time
+        'values' : energies
         }
     return results_dict
 
