@@ -12,10 +12,11 @@ from tqdm import tqdm
 from tqdm.notebook import tqdm_notebook
 import sys
 from utils import Label2Chain, sort_solution, unpack_functions, isnotebook
-from qiskit.opflow.list_ops import SummedOp
-from qiskit.quantum_info import Pauli
-from qiskit.opflow.primitive_ops import PauliOp
 import copy
+# from qiskit.opflow.list_ops import SummedOp
+# from qiskit.quantum_info import Pauli
+# from qiskit.opflow.primitive_ops import PauliOp
+
 
 """
 See the report for context of this code. 
@@ -452,6 +453,8 @@ def grouping_shuffle(operator, AM, WC, n_mc=500, progress_bar=True):
 		else:
 			pbar = tqdm(total=n_mc, desc='Computing optimal order', file=sys.stdout, ncols=90,
 			            bar_format='{l_bar}{bar}{r_bar}')
+	else:
+		pbar = None
 
 	pool = Pool()  # Initialize the multiprocessing
 	for i, result in enumerate(pool.imap_unordered(unpack_functions, args, chunksize=1), 1):
@@ -476,7 +479,7 @@ def grouping_shuffle(operator, AM, WC, n_mc=500, progress_bar=True):
 
 	order = orders[index]
 
-	operator = SummedOp([PauliOp(Pauli(labels[order[j]]), weights[order[j]]) for j in range(len(order))])
+	# operator = SummedOp([PauliOp(Pauli(labels[order[j]]), weights[order[j]]) for j in range(len(order))])
 
 	Groups, Measurements = grouping(PS[order], AM, WC)  # Obtain the groups and measurements for the best case
 
@@ -927,7 +930,7 @@ def MeasurementAssignmentWithOrder(Vi, Vj, Mi, AM, WC, OQ, T):
 	# The first loop checks if the current assignment of Mi is compatible with Vj. If not, the program returns Mi and
 	# S=False. If Mi is compatible with Vj, the array U will contain the qubits where Mi does not act.
 
-	N = np.size(Vi)
+	# N = np.size(Vi)
 	U = OQ.copy()
 	# Check of Vj compatibility with current Mi
 	for PM in Mi:

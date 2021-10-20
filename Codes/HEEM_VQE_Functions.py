@@ -1,6 +1,6 @@
 import numpy as np
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
-from utils import permutate_indices, swaps
+from utils import permute_indices, swaps
 
 # Maps for the order of measurements in each basis
 maps = [np.array(['XX', 'YY', 'ZZ', 'II']),  # Bell
@@ -336,6 +336,8 @@ def probability2expected(Pauli_weights, Pauli_labels, Groups, Measurements, shif
 		measurement, and the second element is another list with the indices of the measured qubits. The convention for
 		the indices of the qubits is opposite to the qiskit convention. Here the qubit with higher weight is named as
 		q_0.
+	shift: (optional) bool
+		Change between qubits numbering conventions.
 
 	Return
 	------
@@ -383,9 +385,9 @@ def probability2expected(Pauli_weights, Pauli_labels, Groups, Measurements, shif
 
 				permutations = swaps(chain_qubits)
 				for permutation in permutations:
-					diagonal_factors = permutate_indices(diagonal_factors,
-					                                     permutation[0], permutation[1],
-					                                     n_qubits)
+					diagonal_factors = permute_indices(diagonal_factors,
+					                                   permutation[0], permutation[1],
+					                                   n_qubits)
 			diagonal_factors_temp.append(diagonal_factors * pauli_weights[i])
 
 		diagonal_factors_all.append(np.array(diagonal_factors_temp))
