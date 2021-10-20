@@ -13,6 +13,7 @@ from tqdm.notebook import tqdm_notebook
 import sys
 from utils import Label2Chain, sort_solution, unpack_functions, isnotebook
 import copy
+
 # from qiskit.opflow.list_ops import SummedOp
 # from qiskit.quantum_info import Pauli
 # from qiskit.opflow.primitive_ops import PauliOp
@@ -1021,9 +1022,8 @@ def groupingWithOrder(PS, G, connected=False):
 	¡Important!: In 'Measurement' output the indexes that we use to refer to the qubits are theoretical indexes,
 	not the correspondent physical indexes (i.e., if we have the i-theoretical qubit is mapped to the j-physical qubit
 	through T, in other words T[i]=j, we use the index i and not the j to refer to that qubit)
+	"""
 
-
-		"""
 	PG = PauliGraph(PS)
 	SV = sorted(PG.degree, key=lambda x: x[1], reverse=True)
 	n = np.size(PS[:, 0])
