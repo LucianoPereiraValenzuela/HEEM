@@ -11,6 +11,7 @@ from qiskit_nature.mappers.second_quantization import ParityMapper, JordanWigner
 from qiskit_nature.converters.second_quantization.qubit_converter import QubitConverter
 from IPython import get_ipython
 from qiskit_nature.drivers.second_quantization import PySCFDriver
+import os
 
 
 def HeisenbergHamiltonian(J=1, H=1, num_qubits=2, neighbours=None):
@@ -116,7 +117,7 @@ def Label2Chain(QubitOp):
 	for idx in QubitOp.oplist:
 		label_temp = idx.primitive.to_label()
 		label.append(label_temp)
-		ops.append([Dict.get(idx) for idx in label_temp])
+		ops.append([Dict.get(s) for s in label_temp])
 		coeff.append(idx.coeff)
 
 	return np.array(ops), coeff, label
@@ -205,7 +206,7 @@ def H2(distance=.761, freeze_core=True, remove_orbitals=False, initial_state=Fal
 		from qiskit_nature.drivers.second_quantization.pyquanted import PyQuanteDriver
 		driver = PyQuanteDriver(molecule)
 
-	qmolecule = driver.run()
+	# qmolecule = driver.run()
 
 	if remove_orbitals is False:
 		Transformer = FreezeCoreTransformer(freeze_core=freeze_core)
@@ -290,7 +291,7 @@ def LiH(distance=1.5474, freeze_core=True, remove_orbitals=None, initial_state=F
 		from qiskit_nature.drivers.second_quantization.pyquanted import PyQuanteDriver
 		driver = PyQuanteDriver(molecule)
 
-	qmolecule = driver.run()
+	# qmolecule = driver.run()
 
 	if remove_orbitals is False:
 		Transformer = FreezeCoreTransformer(freeze_core=freeze_core)
@@ -379,7 +380,7 @@ def BeH2(distance=1.339, freeze_core=True, remove_orbitals=None, operator=True, 
 		from qiskit_nature.drivers.second_quantization.pyquanted import PyQuanteDriver
 		driver = PyQuanteDriver(molecule)
 
-	qmolecule = driver.run()
+	# qmolecule = driver.run()
 	if remove_orbitals is False:
 		Transformer = FreezeCoreTransformer(freeze_core=freeze_core)
 	else:
@@ -468,7 +469,7 @@ def H2O(distance=0.9573, freeze_core=True, remove_orbitals=None, operator=True, 
 		from qiskit_nature.drivers.second_quantization.pyquanted import PyQuanteDriver
 		driver = PyQuanteDriver(molecule)
 
-	qmolecule = driver.run()
+	# qmolecule = driver.run()
 	if remove_orbitals is False:
 		Transformer = FreezeCoreTransformer(freeze_core=freeze_core)
 	else:
@@ -498,7 +499,7 @@ def H2O(distance=0.9573, freeze_core=True, remove_orbitals=None, operator=True, 
 	if operator is False:
 		return converter, problem
 	else:
-		# um_particles = (problem.grouped_property_transformed.get_property("ParticleNumber").num_alpha,
+		# num_particles = (problem.grouped_property_transformed.get_property("ParticleNumber").num_alpha,
 		#                 problem.grouped_property_transformed.get_property("ParticleNumber").num_beta)
 
 		particle_number = problem.grouped_property_transformed.get_property("ParticleNumber")
@@ -671,3 +672,152 @@ def swaps(arr, reverse=True):
 		swaps_list = np.abs(swaps_list - n + 1)
 
 	return swaps_list
+
+
+def change_order_qubitop(qubit_op, order_paulis, order_qubits):
+	"""
+
+	Parameters
+	----------
+	qubit_op
+	order_paulis
+	order_qubits
+
+	Returns
+	-------
+
+	"""
+	paulis, coeffs, labels = Label2Chain(qubit_op)
+
+	operators = []
+	for i in range(len(labels)):
+		coeff = coeffs[order_paulis[i]]
+		label = labels[order_paulis[i]]
+
+		temp = ''
+		for j in range(len(order_qubits)):
+			temp += label[order_qubits[j]]
+
+		operators.append(PauliOp(Pauli(temp), coeff))
+
+	new_qubit_op = SummedOp(operators)
+	return new_qubit_op
+
+
+def question_overwrite(name):
+	"""
+	Make a question if you want to overwrite a certain file that already exists in the directory. There is only two
+	possible answers y -> yes (true) or	n -> no (False). If the answer is non of this two the question is repeated until
+	a good answer is given.
+
+	Parameter
+	----------
+	name: (Str)
+		Name of the file to overwrite
+
+	Return
+	------
+	(Bool)
+		Answer given by the user
+	"""
+
+	temp = input('Do you want to overwrite the file ({})?  [y]/n: '.format(name))  # Ask for an answer by keyword input
+
+	if temp == 'y' or temp == '':
+		return True
+	elif temp == 'n':
+		return False
+	else:  # If the answer is not correct
+		print('I didn\'t understand your answer.')
+		return question_overwrite(name)  # The function will repeat until a correct answer if provided
+
+
+def save_figure(fig, file_dic):
+	fig.savefig(file_dic, bbox_inches="tight",
+				dpi=600)  # Save the figure with the corresponding file direction and the correct extension
+
+
+def save_data(data, file_dic):
+	np.save(file_dic, data)
+
+
+def save_object(object_save, name, overwrite=None, extension=None, dic=None, prefix='', back=0,
+                temp=False, index=0, ask=True, extent=False):
+	"""
+	Save a given figure or date. We must introduce the name with which we want to save the file. If the file already
+	exist, then we will be asked if we want to overwrite it. We can also change the	extension used to save the image.
+	This function has a protection for not overwriting and save a temp file if the overwriting question is not asked.
+
+	Parameters
+	----------
+	object_save: (fig or dic)
+		Matplotlib figure or dictionary with the data to save
+	name: (str)
+		String with the name of the file in which save the data
+	overwrite: Optional (bool)
+		Condition to overwrite or not the data. If a value is not given then the function will ask by default
+	extension: Optional (str)
+		Extension of the save folder. By default extension='npy' for data, and extension='pdf' for figures
+	dic: Optional (str)
+		Directory to save the data. By default dic='data/
+	prefix: Optional (str)
+		Prefix for the folder 'data/'. This must be used if the function is called from a sub folder or is the target
+		folder have a complex name. By default prefix=''
+	back: Optional (int)
+		Number of times to go back from the script that call this function until reach the parent folder of the target
+		directory. By default back=0
+	temp: (bool)
+		If a temp file is saved. Only works with overwrite=None
+	index: (int)
+		Index to include in the file name is the previous onw is already occupied
+	ask: (bool)
+		Condition than controls if the question to overwrite is done.
+	"""
+
+	if str(type(object_save)) == "<class 'matplotlib.figure.Figure'>":
+		object_type = 'figure'
+		save_function = save_figure
+	else:
+		object_type = 'data'
+		save_function = save_data
+
+	if dic is None:
+		dic = '../data/'
+
+	dic = '../' * back + dic
+
+	if extension is None:
+		if object_type == 'figure':
+			extension = 'pdf'
+		else:
+			extension = 'npy'
+
+	file_dic = prefix + dic + name  # Complete the directory of the file including its extension
+
+	if object_type == 'data':
+		if index != 0:  # If an index is specified
+			file_dic += ' (' + str(index) + ')'  # Include the index in the same
+
+	if overwrite is None:  # If the user does not give a preference for the overwriting
+		if os.path.isfile(file_dic + '.' + extension):  # If the file exists in the folder
+			if temp:
+				save_function(object_save, file_dic + '_temp' + '.' + extension)
+			if ask:  # The function will ask if the user want to overwrite the file
+				overwrite = question_overwrite(file_dic + '.' + extension)
+			else:
+				overwrite = False
+		else:
+			overwrite = True  # If the file does not exist, them the figure will be saved
+
+	if overwrite:  # Depending on the answer of the user
+		save_function(object_save, file_dic + '.' + extension)
+		print(object_type, 'saved')
+	elif extent:
+		# If the user does not want to over write, a copy is saved
+		# The copy will include the typical (1) at the end of the name, if this already exist then (2) without asking.
+		# If the file also exist then (3)
+		# and so on until an empty number is reached.
+		save_object(object_save, name, index=index + 1, ask=False, temp=False)
+
+	if os.path.isfile(file_dic + '_temp.npy'):
+		os.remove(file_dic + '_temp.npy')  # If the file is correctly saved the temp file is removed
