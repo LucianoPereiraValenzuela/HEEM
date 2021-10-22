@@ -222,11 +222,12 @@ class VQE(MinimumEigensolver):
 			G.add_edges_from(self._connectivity)
 			#             self._Groups, self._Measurements = grouping(paulis, self._order, self._connectivity)
 			self._Groups, self._Measurements, self._layout = groupingWithOrder(paulis, G)
-			self._quantum_instance.set_config(initial_layout=self._layout)
 
 		elif self._grouping == 'TPB':
 			_, self._Groups, self._Measurements = TPBgrouping(paulis)
 			self._layout = None
+
+		self._quantum_instance.set_config(initial_layout=self._layout)
 
 		circuits = []
 		n_measure = []

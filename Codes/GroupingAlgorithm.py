@@ -1,19 +1,13 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[3]:
-
-
 import numpy as np
 import networkx as nx
 from itertools import permutations
-from multiprocessing import Pool
-from tqdm import tqdm
-from tqdm.notebook import tqdm_notebook
-import sys
-from utils import Label2Chain, sort_solution, unpack_functions, isnotebook
 import copy
 
+# from multiprocessing import Pool
+# from tqdm import tqdm
+# from tqdm.notebook import tqdm_notebook
+# import sys
+# from utils import Label2Chain, sort_solution, unpack_functions, isnotebook
 # from qiskit.opflow.list_ops import SummedOp
 # from qiskit.quantum_info import Pauli
 # from qiskit.opflow.primitive_ops import PauliOp
@@ -401,95 +395,96 @@ def n_groups(PS, AM, WC):
 	return len(Groups)
 
 
-def grouping_shuffle(operator, AM, WC, n_mc=500, progress_bar=True):
-	"""
-	Shuffle the order for the pauli strings randomly a given number of times and choose the ordering with less number of
-	groups.
-
-	Parameters
-	----------
-	operator: SumOp
-		Operator with the Pauli strings to group.
-	AM: list
-		It is the list of the admissible measurements considered. Regarding our numerical encoding, it is a list of
-		integers from 1 to 9. The order of the list encodes the preference of measurement assignment. For instance, the
-		first measurement appearing in this list will be the one that would be preferentially assigned.
-	WC: list
-		It is a list of tuples. Each tuple represents a set of well connected qubits.
-
-	n_mc: int (optional)
-		Number of Monte Carlo random orderings.
-	progress_bar: Bool (optional)
-		If True then print the progress bar for the computation of random orderings. If False, then nothing is print.
-
-	Returns
-	-------
-		Groups: list
-		The element in the position i is a list with the indexes of strings assigned to group i, i.e, the strings of
-		group i.
-	Measurement: list
-		The element in position i is a list which represents measurement assigned to the group i. Each of these list is
-		a list of partial measurements. Each partial measurements is a list of two elements. The first of these elements
-		encodes the partial measurement assigned and the second the qubits where it should performed.
-	# operator: SumOp
-		# Rearrange Pauli strings that obtain the best grouping for the number of Monte Carlo shots provided.
-	"""
-
-	PS, weights, labels = Label2Chain(operator)
-
-	orders = []
-	order = np.arange(len(PS))  # Default order
-	args = []
-	results = []
-
-	for i in range(n_mc):
-		if i != 0:
-			np.random.shuffle(order)  # Shuffle randomly the Pauli strings
-		orders.append(np.copy(order))
-		args.append([i, n_groups, [PS[order], AM, WC]])
-
-	if progress_bar:  # initialize the progress bar, depending if the instance is in a Jupyter notebook or not
-		if isnotebook():
-			pbar = tqdm_notebook(total=n_mc, desc='Computing optimal order')
-		else:
-			pbar = tqdm(total=n_mc, desc='Computing optimal order', file=sys.stdout, ncols=90,
-			            bar_format='{l_bar}{bar}{r_bar}')
-	else:
-		pbar = None
-
-	pool = Pool()  # Initialize the multiprocessing
-	for i, result in enumerate(pool.imap_unordered(unpack_functions, args, chunksize=1), 1):
-		results.append(result)  # Save the result
-		if progress_bar:
-			pbar.update()
-
-	if progress_bar:
-		pbar.close()
-
-	pool.terminate()
-	results = sort_solution(results)  # Sort the async results
-
-	number_groups = []
-	for result in results:
-		number_groups.append(result)
-
-	index = np.argmin(number_groups)
-
-	print('The original order gives {} groups'.format(number_groups[0]))
-	print('The best order found gives {} groups'.format(number_groups[index]))
-
-	order = orders[index]
-
-	# operator = SummedOp([PauliOp(Pauli(labels[order[j]]), weights[order[j]]) for j in range(len(order))])
-
-	Groups, Measurements = grouping(PS[order], AM, WC)  # Obtain the groups and measurements for the best case
-
-	# Remap the Pauli strings so the initial order is conserved
-	for i in range(len(Groups)):
-		for j in range(len(Groups[i])):
-			Groups[i][j] = order[Groups[i][j]]
-
-	return Groups, Measurements  # operator
+### DEPRECATED ###
+# def grouping_shuffle(operator, AM, WC, n_mc=500, progress_bar=True):
+# 	"""
+# 	Shuffle the order for the pauli strings randomly a given number of times and choose the ordering with less number of
+# 	groups.
+#
+# 	Parameters
+# 	----------
+# 	operator: SumOp
+# 		Operator with the Pauli strings to group.
+# 	AM: list
+# 		It is the list of the admissible measurements considered. Regarding our numerical encoding, it is a list of
+# 		integers from 1 to 9. The order of the list encodes the preference of measurement assignment. For instance, the
+# 		first measurement appearing in this list will be the one that would be preferentially assigned.
+# 	WC: list
+# 		It is a list of tuples. Each tuple represents a set of well connected qubits.
+#
+# 	n_mc: int (optional)
+# 		Number of Monte Carlo random orderings.
+# 	progress_bar: Bool (optional)
+# 		If True then print the progress bar for the computation of random orderings. If False, then nothing is print.
+#
+# 	Returns
+# 	-------
+# 		Groups: list
+# 		The element in the position i is a list with the indexes of strings assigned to group i, i.e, the strings of
+# 		group i.
+# 	Measurement: list
+# 		The element in position i is a list which represents measurement assigned to the group i. Each of these list is
+# 		a list of partial measurements. Each partial measurements is a list of two elements. The first of these elements
+# 		encodes the partial measurement assigned and the second the qubits where it should performed.
+# 	# operator: SumOp
+# 		# Rearrange Pauli strings that obtain the best grouping for the number of Monte Carlo shots provided.
+# 	"""
+#
+# 	PS, weights, labels = Label2Chain(operator)
+#
+# 	orders = []
+# 	order = np.arange(len(PS))  # Default order
+# 	args = []
+# 	results = []
+#
+# 	for i in range(n_mc):
+# 		if i != 0:
+# 			np.random.shuffle(order)  # Shuffle randomly the Pauli strings
+# 		orders.append(np.copy(order))
+# 		args.append([i, n_groups, [PS[order], AM, WC]])
+#
+# 	if progress_bar:  # initialize the progress bar, depending if the instance is in a Jupyter notebook or not
+# 		if isnotebook():
+# 			pbar = tqdm_notebook(total=n_mc, desc='Computing optimal order')
+# 		else:
+# 			pbar = tqdm(total=n_mc, desc='Computing optimal order', file=sys.stdout, ncols=90,
+# 			            bar_format='{l_bar}{bar}{r_bar}')
+# 	else:
+# 		pbar = None
+#
+# 	pool = Pool()  # Initialize the multiprocessing
+# 	for i, result in enumerate(pool.imap_unordered(unpack_functions, args, chunksize=1), 1):
+# 		results.append(result)  # Save the result
+# 		if progress_bar:
+# 			pbar.update()
+#
+# 	if progress_bar:
+# 		pbar.close()
+#
+# 	pool.terminate()
+# 	results = sort_solution(results)  # Sort the async results
+#
+# 	number_groups = []
+# 	for result in results:
+# 		number_groups.append(result)
+#
+# 	index = np.argmin(number_groups)
+#
+# 	print('The original order gives {} groups'.format(number_groups[0]))
+# 	print('The best order found gives {} groups'.format(number_groups[index]))
+#
+# 	order = orders[index]
+#
+# 	# operator = SummedOp([PauliOp(Pauli(labels[order[j]]), weights[order[j]]) for j in range(len(order))])
+#
+# 	Groups, Measurements = grouping(PS[order], AM, WC)  # Obtain the groups and measurements for the best case
+#
+# 	# Remap the Pauli strings so the initial order is conserved
+# 	for i in range(len(Groups)):
+# 		for j in range(len(Groups[i])):
+# 			Groups[i][j] = order[Groups[i][j]]
+#
+# 	return Groups, Measurements  # operator
 
 
 # %% Renovations for the grouping algorithm after Qiskit hackathon
@@ -550,8 +545,8 @@ def number_of_compatible_measurements(m, F):
 	for i in range(4):
 		pair.append(str(Comp[m][i][0]) + str(Comp[m][i][1]))
 
-	n_compatibilities = (1 / 2) * ((F[pair[0]] + F[pair[1]] + F[pair[2]] + F[pair[3]]) ** 2 - (
-			F[pair[0]] + F[pair[1]] + F[pair[2]] + F[pair[3]]))
+	temp = F[pair[0]] + F[pair[1]] + F[pair[2]] + F[pair[3]]
+	n_compatibilities = (1 / 2) * (temp ** 2 - temp)
 
 	return n_compatibilities
 
@@ -807,8 +802,8 @@ def Tcompatiblities(PS, T, G):  # Algorithm 4 of Fran's notes.
 		mapped to a the j-th physical qubit.
 
 	G: graph
-		G is the connectivity graph of the chip. It vertices represents physical qubits and its edges physical connections
-		between them.
+		G is the connectivity graph of the chip. It vertices represents physical qubits and its edges physical
+		connections between them.
 
 	Returns
 	-------
@@ -828,7 +823,6 @@ def Tcompatiblities(PS, T, G):  # Algorithm 4 of Fran's notes.
 		with any other qubit though any measurement, given that T have been chosen as the map from theoretical qubits
 		to physical qubits . It is the sum of the i_th row/column of the matrix C, excluding
 		the -1 of the diagonal plus the number of compatibilities due to one-qubit measurements.
-
 	"""
 
 	n = np.shape(PS)[0]
@@ -866,9 +860,6 @@ def Tcompatiblities(PS, T, G):  # Algorithm 4 of Fran's notes.
 	CTM = CM
 	CTQ = CQ
 	return CT, CTM, CTQ
-
-
-# In[68]:
 
 
 def MeasurementAssignmentWithOrder(Vi, Vj, Mi, AM, WC, OQ, T):
@@ -1024,6 +1015,14 @@ def groupingWithOrder(PS, G, connected=False):
 	through T, in other words T[i]=j, we use the index i and not the j to refer to that qubit)
 	"""
 
+	if type(G) == nx.classes.graph.Graph:
+		pass
+	elif type(G) == list:
+		temp = copy.copy(G)
+		G = nx.Graph()
+		G.add_nodes_from(range(np.max(temp) + 1))
+		G.add_edges_from(temp)
+
 	PG = PauliGraph(PS)
 	SV = sorted(PG.degree, key=lambda x: x[1], reverse=True)
 	n = np.size(PS[:, 0])
@@ -1036,6 +1035,7 @@ def groupingWithOrder(PS, G, connected=False):
 	CMlist = []
 	for i in range(1, 10):
 		CMlist.append(CM[str(i)])
+
 	AM = [i[0] for i in sorted(enumerate(CMlist), key=lambda x: x[1], reverse=True)]
 	AM = [x + 1 for x in AM]
 	OQ = [i[0] for i in sorted(enumerate(list(CQ)), key=lambda x: x[1], reverse=True)]
