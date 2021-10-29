@@ -12,6 +12,9 @@ from qiskit_nature.converters.second_quantization.qubit_converter import QubitCo
 from IPython import get_ipython
 from qiskit_nature.drivers.second_quantization import PySCFDriver
 import os
+import copy
+from GroupingAlgorithm import groupingWithOrder
+from networkx import is_connected
 
 
 def HeisenbergHamiltonian(J=1, H=1, num_qubits=2, neighbours=None):
@@ -513,68 +516,69 @@ def H2O(distance=0.9573, freeze_core=True, remove_orbitals=None, operator=True, 
 			return qubit_op, init_state
 
 
-def unpack_functions(pack):
-	"""
-	Unpack the list where the first element is the index of the async execution, the second index in the function to
-	run, the third index are the function variables, and the last index (if provided) are the optional arguments.
-
-	Parameter
-	---------
-	pack: list
-		List with all the data
-
-	 Return
-	 ------
-	 Result of the function
-	"""
-	if len(pack) < 4:  # If no optional arguments are provided
-		pack.append({})
-	return [pack[0], pack[1](*pack[2], **pack[3])]
-
-
-def sort_solution(data):
-	"""
-	Function to sort the data obtained for a parallel computation
-
-	Parameter
-	---------
-	data: list
-		List in which each entry represents one solution of the parallel computation. The elements are
-		also list which contains in the first element the index and in the second one the result of the computation.
-
-	Return
-	------
-	List with the data sorted
-	"""
-	n = len(data)  # Extract the number of computations done
-	sorted_sol = [None] * n  # Empty list with the correct number of elements
-	for i in range(n):  # Iterate over all the elements
-		index = data[i][0]  # Obtain the index of the result
-		temp = data[i][1]  # Obtain the result
-		sorted_sol[index] = temp  # Save the result in the correct element
-
-	return sorted_sol
-
-
-def isnotebook():
-	"""
-	Check if the script is been running in a jupyter notebook instance
-
-	Return
-	------
-	True is the instance is a Jupyter notebook, false in other cases
-	"""
-	try:
-		shell = get_ipython().__class__.__name__
-		if shell == 'ZMQInteractiveShell':
-			return True  # Jupyter notebook or qtconsole
-		elif shell == 'TerminalInteractiveShell':
-			return False  # Terminal running IPython
-		else:
-			return False  # Other type (?)
-	except NameError:
-		return False  # Probably standard Python interpreter
-
+# DEPRECATED
+# def unpack_functions(pack):
+# 	"""
+# 	Unpack the list where the first element is the index of the async execution, the second index in the function to
+# 	run, the third index are the function variables, and the last index (if provided) are the optional arguments.
+#
+# 	Parameter
+# 	---------
+# 	pack: list
+# 		List with all the data
+#
+# 	 Return
+# 	 ------
+# 	 Result of the function
+# 	"""
+# 	if len(pack) < 4:  # If no optional arguments are provided
+# 		pack.append({})
+# 	return [pack[0], pack[1](*pack[2], **pack[3])]
+#
+#
+# def sort_solution(data):
+# 	"""
+# 	Function to sort the data obtained for a parallel computation
+#
+# 	Parameter
+# 	---------
+# 	data: list
+# 		List in which each entry represents one solution of the parallel computation. The elements are
+# 		also list which contains in the first element the index and in the second one the result of the computation.
+#
+# 	Return
+# 	------
+# 	List with the data sorted
+# 	"""
+# 	n = len(data)  # Extract the number of computations done
+# 	sorted_sol = [None] * n  # Empty list with the correct number of elements
+# 	for i in range(n):  # Iterate over all the elements
+# 		index = data[i][0]  # Obtain the index of the result
+# 		temp = data[i][1]  # Obtain the result
+# 		sorted_sol[index] = temp  # Save the result in the correct element
+#
+# 	return sorted_sol
+#
+#
+# def isnotebook():
+# 	"""
+# 	Check if the script is been running in a jupyter notebook instance
+#
+# 	Return
+# 	------
+# 	True is the instance is a Jupyter notebook, false in other cases
+# 	"""
+# 	try:
+# 		shell = get_ipython().__class__.__name__
+# 		if shell == 'ZMQInteractiveShell':
+# 			return True  # Jupyter notebook or qtconsole
+# 		elif shell == 'TerminalInteractiveShell':
+# 			return False  # Terminal running IPython
+# 		else:
+# 			return False  # Other type (?)
+# 	except NameError:
+# 		return False  # Probably standard Python interpreter
+#
 
 def permute_indices(diagonal_factors, qubit0, qubit1, n_qubits):
 	"""
@@ -704,6 +708,15 @@ def change_order_qubitop(qubit_op, order_paulis, order_qubits):
 	return new_qubit_op
 
 
+def number2SummedOp(labels, coeffs):
+	operators = []
+	for label, coeff in zip(labels, coeffs):
+		operators.append(PauliOp(Pauli(label), coeff))
+
+	new_qubit_op = SummedOp(operators)
+	return new_qubit_op
+
+
 def question_overwrite(name):
 	"""
 	Make a question if you want to overwrite a certain file that already exists in the directory. There is only two
@@ -734,7 +747,7 @@ def question_overwrite(name):
 
 def save_figure(fig, file_dic):
 	fig.savefig(file_dic, bbox_inches="tight",
-				dpi=600)  # Save the figure with the corresponding file direction and the correct extension
+	            dpi=600)  # Save the figure with the corresponding file direction and the correct extension
 
 
 def save_data(data, file_dic):
@@ -742,7 +755,7 @@ def save_data(data, file_dic):
 
 
 def save_object(object_save, name, overwrite=None, extension=None, dic=None, prefix='', back=0,
-                temp=False, index=0, ask=True, extent=False):
+                temp=False, index=0, ask=True, extent=False, silent=False):
 	"""
 	Save a given figure or date. We must introduce the name with which we want to save the file. If the file already
 	exist, then we will be asked if we want to overwrite it. We can also change the	extension used to save the image.
@@ -811,7 +824,8 @@ def save_object(object_save, name, overwrite=None, extension=None, dic=None, pre
 
 	if overwrite:  # Depending on the answer of the user
 		save_function(object_save, file_dic + '.' + extension)
-		print(object_type, 'saved')
+		if not silent:
+			print(object_type, 'saved')
 	elif extent:
 		# If the user does not want to over write, a copy is saved
 		# The copy will include the typical (1) at the end of the name, if this already exist then (2) without asking.
@@ -821,3 +835,41 @@ def save_object(object_save, name, overwrite=None, extension=None, dic=None, pre
 
 	if os.path.isfile(file_dic + '_temp.npy'):
 		os.remove(file_dic + '_temp.npy')  # If the file is correctly saved the temp file is removed
+
+
+def n_groups_shuffle(paulis, G, seed, shuffle_paulis=True, shuffle_qubits=True, x=1, n_max=10000, n_delete=0):
+	num_qubits = len(paulis[0])
+	G_new = copy.deepcopy(G)
+
+	if x < 1 or n_delete > 0:
+		edges = list(G_new.edges())
+
+		if x < 1:
+			n_delete = int((1 - x) * len(edges))
+
+		indices_delete = np.random.default_rng().choice(len(edges), size=n_delete, replace=False)
+		for index in indices_delete:
+			G_new.remove_edge(*edges[index])
+
+		if not is_connected(G_new):
+			if n_max == 0:
+				return np.nan, None, None, G_new
+			else:
+				return n_groups_shuffle(paulis, G, seed, shuffle_paulis=shuffle_paulis,
+				                        shuffle_qubits=shuffle_qubits, x=x, n_max=n_max - 1, n_delete=n_delete)
+
+	np.random.seed(seed)
+	order_paulis = np.arange(len(paulis))
+	order_qubits = np.arange(num_qubits)
+	if shuffle_paulis:
+		np.random.shuffle(order_paulis)
+
+	if shuffle_qubits:
+		np.random.shuffle(order_qubits)
+
+		temp = copy.deepcopy(paulis)
+		for i in range(len(order_qubits)):
+			paulis[:, i] = temp[:, order_qubits[i]]
+
+	Groups_HEEM, _, _ = groupingWithOrder(paulis[order_paulis], G_new)
+	return len(Groups_HEEM), order_paulis, order_qubits, G_new
