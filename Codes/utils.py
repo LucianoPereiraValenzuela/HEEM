@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from qiskit.opflow.primitive_ops import PauliOp
 from qiskit.opflow.list_ops import SummedOp
 from qiskit.quantum_info import Pauli
@@ -9,12 +10,13 @@ from qiskit_nature.transformers.second_quantization.electronic import FreezeCore
 from qiskit_nature.problems.second_quantization.electronic import ElectronicStructureProblem
 from qiskit_nature.mappers.second_quantization import ParityMapper, JordanWignerMapper, BravyiKitaevMapper
 from qiskit_nature.converters.second_quantization.qubit_converter import QubitConverter
-from IPython import get_ipython
 from qiskit_nature.drivers.second_quantization import PySCFDriver
 import os
 import copy
 from GroupingAlgorithm import groupingWithOrder
 from networkx import is_connected
+
+# from IPython import get_ipython
 
 
 def HeisenbergHamiltonian(J=1, H=1, num_qubits=2, neighbours=None):
@@ -170,7 +172,7 @@ def get_backend_connectivity(backend):
 	return connexions
 
 
-def H2(distance=.761, freeze_core=True, remove_orbitals=False, initial_state=False, operator=True,
+def H2(distance=None, freeze_core=True, remove_orbitals=False, initial_state=False, operator=True,
        mapper_type='ParityMapper'):
 	"""
 	Qiskit operator of the LiH
@@ -200,6 +202,9 @@ def H2(distance=.761, freeze_core=True, remove_orbitals=False, initial_state=Fal
 	init_state: QuantumCircuit (if initial_state=True)
 		Quantum Circuit with the initial state given by Hartree Fock
 	"""
+
+	if distance is None:
+		distance = .761
 
 	molecule = 'H .0 .0 .0; H .0 .0 ' + str(distance)
 
@@ -252,7 +257,7 @@ def H2(distance=.761, freeze_core=True, remove_orbitals=False, initial_state=Fal
 			return qubit_op, init_state
 
 
-def LiH(distance=1.5474, freeze_core=True, remove_orbitals=None, initial_state=False, operator=True,
+def LiH(distance=None, freeze_core=True, remove_orbitals=None, initial_state=False, operator=True,
         mapper_type='ParityMapper'):
 	"""
 	Qiskit operator of the LiH
@@ -282,6 +287,9 @@ def LiH(distance=1.5474, freeze_core=True, remove_orbitals=None, initial_state=F
 	init_state: QuantumCircuit (if initial_state=True)
 		Quantum Circuit with the initial state given by Hartree Fock
 	"""
+
+	if distance is None:
+		distance = 1.5474
 
 	if remove_orbitals is None:
 		remove_orbitals = [3, 4]
@@ -341,7 +349,7 @@ def LiH(distance=1.5474, freeze_core=True, remove_orbitals=None, initial_state=F
 			return qubit_op, init_state
 
 
-def BeH2(distance=1.339, freeze_core=True, remove_orbitals=None, operator=True, initial_state=False,
+def BeH2(distance=None, freeze_core=True, remove_orbitals=None, operator=True, initial_state=False,
          mapper_type='ParityMapper'):  #
 	"""
 	Qiskit operator of the BeH2
@@ -371,6 +379,9 @@ def BeH2(distance=1.339, freeze_core=True, remove_orbitals=None, operator=True, 
 	init_state: QuantumCircuit (if initial_state=True)
 		Quantum Circuit with the initial state given by Hartree Fock
 	"""
+
+	if distance is None:
+		distance = 1.339
 
 	if remove_orbitals is None:
 		remove_orbitals = [3, 6]
@@ -427,7 +438,7 @@ def BeH2(distance=1.339, freeze_core=True, remove_orbitals=None, operator=True, 
 			return qubit_op, init_state
 
 
-def H2O(distance=0.9573, freeze_core=True, remove_orbitals=None, operator=True, initial_state=False,
+def H2O(distance=None, freeze_core=True, remove_orbitals=None, operator=True, initial_state=False,
         mapper_type='ParityMapper'):  #
 	"""
 	Qiskit operator of the BeH2
@@ -457,6 +468,9 @@ def H2O(distance=0.9573, freeze_core=True, remove_orbitals=None, operator=True, 
 	init_state: QuantumCircuit (if initial_state=True)
 		Quantum Circuit with the initial state given by Hartree Fock
 	"""
+
+	if distance is None:
+		distance = 0.9573
 
 	if remove_orbitals is None:
 		remove_orbitals = [4]
@@ -514,6 +528,23 @@ def H2O(distance=0.9573, freeze_core=True, remove_orbitals=None, operator=True, 
 		else:
 			init_state = HartreeFock(num_spin_orbitals, num_particles, converter)
 			return qubit_op, init_state
+
+
+def molecules(molecule_name, distance=None, freeze_core=True, remove_orbitals=None, operator=True, initial_state=False,
+              mapper_type='ParityMapper'):
+	molecule_name = molecule_name.lower()
+
+	if molecule_name == 'h2':
+		return H2(distance, freeze_core, remove_orbitals, initial_state, operator, mapper_type)
+	elif molecule_name == 'lih':
+		return LiH(distance, freeze_core, remove_orbitals, initial_state, operator, mapper_type)
+	elif molecule_name == 'beh2':
+		return BeH2(distance, freeze_core, remove_orbitals, initial_state, operator, mapper_type)
+	elif molecule_name == 'h2o':
+		return H2O(distance, freeze_core, remove_orbitals, initial_state, operator, mapper_type)
+	else:
+		print('The molecule is not implemented')
+		return None
 
 
 # DEPRECATED

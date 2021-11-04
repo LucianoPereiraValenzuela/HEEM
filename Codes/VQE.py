@@ -6,7 +6,8 @@ from typing import Optional, List, Callable, Union, Dict
 import logging
 import time
 import numpy as np
-from GroupingAlgorithm import permutations, groupingWithOrder, TPBgrouping
+from GroupingAlgorithm import groupingWithOrder, TPBgrouping
+from itertools import permutations
 from HEEM_VQE_Functions import measure_circuit_factor, probability2expected, post_process_results
 from utils import Label2Chain
 from qiskit import ClassicalRegister, QuantumCircuit
@@ -31,16 +32,16 @@ class VQE(MinimumEigensolver):
 	"""
 
 	def __init__(self,
-	             ansatz: Optional[QuantumCircuit] = None,
-	             optimizer: Optional[Optimizer] = None,
-	             initial_point: Optional[np.ndarray] = None,
-	             gradient: Optional[Union[GradientBase, Callable]] = None,
-	             grouping: Optional[str] = 'TPB',
-	             order: Optional[np.ndarray] = np.array([4, 3, 2, 1]),
-	             connectivity: Optional[list] = None,
-	             callback: Optional[Callable[[int, np.ndarray, float, None], None]] = None,
-	             quantum_instance: Optional[Union[QuantumInstance, BaseBackend, Backend]] = AerSimulator(
-		             method='statevector')) -> None:
+				 ansatz: Optional[QuantumCircuit] = None,
+				 optimizer: Optional[Optimizer] = None,
+				 initial_point: Optional[np.ndarray] = None,
+				 gradient: Optional[Union[GradientBase, Callable]] = None,
+				 grouping: Optional[str] = 'TPB',
+				 order: Optional[np.ndarray] = np.array([4, 3, 2, 1]),
+				 connectivity: Optional[list] = None,
+				 callback: Optional[Callable[[int, np.ndarray, float, None], None]] = None,
+				 quantum_instance: Optional[Union[QuantumInstance, BaseBackend, Backend]] = AerSimulator(
+					 method='statevector')) -> None:
 		"""
 		Parameters
 		----------
@@ -177,8 +178,8 @@ class VQE(MinimumEigensolver):
 					self._ansatz_params = sorted(self._ansatz.parameters, key=lambda p: p.name)
 				except AttributeError as ex:
 					raise AlgorithmError("The number of qubits of the ansatz does not match the "
-					                     "operator, and the ansatz does not allow setting the "
-					                     "number of qubits using `num_qubits`.") from ex
+										 "operator, and the ansatz does not allow setting the "
+										 "number of qubits using `num_qubits`.") from ex
 
 	def _check_operator(self, operator: OperatorBase) -> OperatorBase:
 		""" set operator """
@@ -287,7 +288,7 @@ class VQE(MinimumEigensolver):
 		counts = self._quantum_instance.execute(expected_op).get_counts()
 
 		probabilities = [post_process_results(counts[j], expected_op[j].num_clbits,
-		                                      self._quantum_instance.run_config.shots) for j in range(len(counts))]
+											  self._quantum_instance.run_config.shots) for j in range(len(counts))]
 
 		ExpectedValue = 0
 		for j in range(len(probabilities)):
@@ -330,7 +331,7 @@ class VQE(MinimumEigensolver):
 
 		end_time = time.time()
 		logger.info('Energy evaluation returned %s - %.5f (ms), eval count: %s', means, (end_time - start_time) * 1000,
-		            self._eval_count)
+					self._eval_count)
 
 		return means
 
@@ -372,10 +373,10 @@ class VQE(MinimumEigensolver):
 					backend=self._quantum_instance)
 
 		vqresult = self.find_minimum(initial_point=self._initial_point,
-		                             ansatz=self._ansatz,
-		                             cost_fn=self._energy_evaluation,
-		                             gradient_fn=self._gradient,
-		                             optimizer=self._optimizer)
+									 ansatz=self._ansatz,
+									 cost_fn=self._energy_evaluation,
+									 gradient_fn=self._gradient,
+									 optimizer=self._optimizer)
 
 		self._ret = VQEResult()
 		self._ret.combine(vqresult)
@@ -384,7 +385,7 @@ class VQE(MinimumEigensolver):
 			self._eval_count = vqresult.optimizer_evals
 		self._eval_time = vqresult.optimizer_time
 		logger.info('Optimization complete in %s seconds.\nFound opt_params %s in %s evals',
-		            self._eval_time, vqresult.optimal_point, self._eval_count)
+					self._eval_time, vqresult.optimal_point, self._eval_count)
 
 		self._ret.eigenvalue = vqresult.optimal_value + 0j
 		self._ret.eigenstate = self.get_optimal_vector()
@@ -394,12 +395,12 @@ class VQE(MinimumEigensolver):
 		return self._ret
 
 	def find_minimum(self,
-	                 initial_point: Optional[np.ndarray] = None,
-	                 ansatz: Optional[QuantumCircuit] = None,
-	                 cost_fn: Optional[Callable] = None,
-	                 optimizer: Optional[Optimizer] = None,
-	                 gradient_fn: Optional[Callable] = None,
-	                 ) -> "VariationalResult":
+					 initial_point: Optional[np.ndarray] = None,
+					 ansatz: Optional[QuantumCircuit] = None,
+					 cost_fn: Optional[Callable] = None,
+					 optimizer: Optional[Optimizer] = None,
+					 gradient_fn: Optional[Callable] = None,
+					 ) -> "VariationalResult":
 		"""Optimize to find the minimum cost value.
 
 		Args:
@@ -443,8 +444,8 @@ class VQE(MinimumEigensolver):
 			raise ValueError(
 				"Initial point size {} and parameter size {} mismatch".format(
 					len(initial_point), nparms
-					)
 				)
+			)
 		if len(bounds) != nparms:
 			raise ValueError("Ansatz bounds size does not match parameter size")
 		# If *any* value is *equal* in bounds array to None then the problem does *not* have bounds
@@ -484,7 +485,7 @@ class VQE(MinimumEigensolver):
 			variable_bounds=bounds,
 			initial_point=initial_point,
 			gradient_function=gradient_fn,
-			)
+		)
 		eval_time = time.time() - start
 
 		result = VariationalResult()
@@ -501,14 +502,14 @@ class VQE(MinimumEigensolver):
 		"""Get the minimal cost or energy found by the VQE."""
 		if self._ret.optimal_point is None:
 			raise AlgorithmError("Cannot return optimal cost before running the "
-			                     "algorithm to find optimal params.")
+								 "algorithm to find optimal params.")
 		return self._ret.optimal_value
 
 	def get_optimal_circuit(self) -> QuantumCircuit:
 		"""Get the circuit with the optimal parameters."""
 		if self._ret.optimal_point is None:
 			raise AlgorithmError("Cannot find optimal circuit before running the "
-			                     "algorithm to find optimal params.")
+								 "algorithm to find optimal params.")
 		return self._ansatz.assign_parameters(self._ret.optimal_parameters)
 
 	def get_optimal_vector(self) -> Union[List[float], Dict[str, int]]:
@@ -517,7 +518,7 @@ class VQE(MinimumEigensolver):
 
 		if self._ret.optimal_point is None:
 			raise AlgorithmError("Cannot find optimal vector before running the "
-			                     "algorithm to find optimal params.")
+								 "algorithm to find optimal params.")
 		qc = self.get_optimal_circuit()
 		if self._quantum_instance.is_statevector:
 			ret = self._quantum_instance.execute(qc)
