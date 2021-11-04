@@ -13,8 +13,9 @@ from qiskit_nature.converters.second_quantization.qubit_converter import QubitCo
 from qiskit_nature.drivers.second_quantization import PySCFDriver
 import os
 import copy
-from GroupingAlgorithm import groupingWithOrder
+from GroupingAlgorithm import groupingWithOrder, grouping
 from networkx import is_connected
+
 
 # from IPython import get_ipython
 
@@ -108,9 +109,9 @@ def Label2Chain(QubitOp):
 		Pauli strings
 	"""
 	Dict = {'I': 0,
-	        'X': 1,
-	        'Y': 2,
-	        'Z': 3}
+			'X': 1,
+			'Y': 2,
+			'Z': 3}
 
 	if type(QubitOp) == PauliSumOp or type(QubitOp) == TaperedPauliSumOp:
 		QubitOp = QubitOp.to_pauli_op()
@@ -173,7 +174,7 @@ def get_backend_connectivity(backend):
 
 
 def H2(distance=None, freeze_core=True, remove_orbitals=False, initial_state=False, operator=True,
-       mapper_type='ParityMapper'):
+	   mapper_type='ParityMapper'):
 	"""
 	Qiskit operator of the LiH
 
@@ -258,7 +259,7 @@ def H2(distance=None, freeze_core=True, remove_orbitals=False, initial_state=Fal
 
 
 def LiH(distance=None, freeze_core=True, remove_orbitals=None, initial_state=False, operator=True,
-        mapper_type='ParityMapper'):
+		mapper_type='ParityMapper'):
 	"""
 	Qiskit operator of the LiH
 
@@ -350,7 +351,7 @@ def LiH(distance=None, freeze_core=True, remove_orbitals=None, initial_state=Fal
 
 
 def BeH2(distance=None, freeze_core=True, remove_orbitals=None, operator=True, initial_state=False,
-         mapper_type='ParityMapper'):  #
+		 mapper_type='ParityMapper'):  #
 	"""
 	Qiskit operator of the BeH2
 
@@ -439,7 +440,7 @@ def BeH2(distance=None, freeze_core=True, remove_orbitals=None, operator=True, i
 
 
 def H2O(distance=None, freeze_core=True, remove_orbitals=None, operator=True, initial_state=False,
-        mapper_type='ParityMapper'):  #
+		mapper_type='ParityMapper'):  #
 	"""
 	Qiskit operator of the BeH2
 
@@ -531,7 +532,7 @@ def H2O(distance=None, freeze_core=True, remove_orbitals=None, operator=True, in
 
 
 def molecules(molecule_name, distance=None, freeze_core=True, remove_orbitals=None, operator=True, initial_state=False,
-              mapper_type='ParityMapper'):
+			  mapper_type='ParityMapper'):
 	molecule_name = molecule_name.lower()
 
 	if molecule_name == 'h2':
@@ -778,7 +779,7 @@ def question_overwrite(name):
 
 def save_figure(fig, file_dic):
 	fig.savefig(file_dic, bbox_inches="tight",
-	            dpi=600)  # Save the figure with the corresponding file direction and the correct extension
+				dpi=600)  # Save the figure with the corresponding file direction and the correct extension
 
 
 def save_data(data, file_dic):
@@ -786,7 +787,7 @@ def save_data(data, file_dic):
 
 
 def save_object(object_save, name, overwrite=None, extension=None, dic=None, prefix='', back=0,
-                temp=False, index=0, ask=True, extent=False, silent=False):
+				temp=False, index=0, ask=True, extent=False, silent=False):
 	"""
 	Save a given figure or date. We must introduce the name with which we want to save the file. If the file already
 	exist, then we will be asked if we want to overwrite it. We can also change the	extension used to save the image.
@@ -868,7 +869,8 @@ def save_object(object_save, name, overwrite=None, extension=None, dic=None, pre
 		os.remove(file_dic + '_temp.npy')  # If the file is correctly saved the temp file is removed
 
 
-def n_groups_shuffle(paulis, G, seed, shuffle_paulis=True, shuffle_qubits=True, x=1, n_max=10000, n_delete=0):
+def n_groups_shuffle(paulis, G, seed, shuffle_paulis=True, shuffle_qubits=True, x=1, n_max=10000, n_delete=0,
+					 connected=False, order=True, basis_group=None):
 	num_qubits = len(paulis[0])
 	G_new = copy.deepcopy(G)
 
@@ -887,7 +889,7 @@ def n_groups_shuffle(paulis, G, seed, shuffle_paulis=True, shuffle_qubits=True, 
 				return np.nan, None, None, G_new
 			else:
 				return n_groups_shuffle(paulis, G, seed, shuffle_paulis=shuffle_paulis,
-				                        shuffle_qubits=shuffle_qubits, x=x, n_max=n_max - 1, n_delete=n_delete)
+										shuffle_qubits=shuffle_qubits, x=x, n_max=n_max - 1, n_delete=n_delete)
 
 	np.random.seed(seed)
 	order_paulis = np.arange(len(paulis))
@@ -902,5 +904,13 @@ def n_groups_shuffle(paulis, G, seed, shuffle_paulis=True, shuffle_qubits=True, 
 		for i in range(len(order_qubits)):
 			paulis[:, i] = temp[:, order_qubits[i]]
 
-	Groups_HEEM, _, _ = groupingWithOrder(paulis[order_paulis], G_new)
-	return len(Groups_HEEM), order_paulis, order_qubits, G_new
+	if order:
+		Groups, _, _ = groupingWithOrder(paulis[order_paulis], G_new, connected=connected)
+	else:
+		if basis_group is None:
+			basis_group = [4, 6, 7, 8, 9, 5, 3, 2, 1]
+
+		WC = list(G.edges())
+		Groups, _ = grouping(paulis[order_paulis], basis_group, WC)
+
+	return len(Groups), order_paulis, order_qubits, G_new
