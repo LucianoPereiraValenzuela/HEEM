@@ -109,9 +109,9 @@ def Label2Chain(QubitOp):
 		Pauli strings
 	"""
 	Dict = {'I': 0,
-			'X': 1,
-			'Y': 2,
-			'Z': 3}
+	        'X': 1,
+	        'Y': 2,
+	        'Z': 3}
 
 	if type(QubitOp) == PauliSumOp or type(QubitOp) == TaperedPauliSumOp:
 		QubitOp = QubitOp.to_pauli_op()
@@ -174,7 +174,7 @@ def get_backend_connectivity(backend):
 
 
 def H2(distance=None, freeze_core=True, remove_orbitals=False, initial_state=False, operator=True,
-	   mapper_type='ParityMapper'):
+       mapper_type='ParityMapper'):
 	"""
 	Qiskit operator of the LiH
 
@@ -259,7 +259,7 @@ def H2(distance=None, freeze_core=True, remove_orbitals=False, initial_state=Fal
 
 
 def LiH(distance=None, freeze_core=True, remove_orbitals=None, initial_state=False, operator=True,
-		mapper_type='ParityMapper'):
+        mapper_type='ParityMapper'):
 	"""
 	Qiskit operator of the LiH
 
@@ -350,8 +350,8 @@ def LiH(distance=None, freeze_core=True, remove_orbitals=None, initial_state=Fal
 			return qubit_op, init_state
 
 
-def BeH2(distance=None, freeze_core=True, remove_orbitals=None, operator=True, initial_state=False,
-		 mapper_type='ParityMapper'):  #
+def BeH2(distance=None, freeze_core=True, remove_orbitals=None, initial_state=False, operator=True,
+         mapper_type='ParityMapper'):
 	"""
 	Qiskit operator of the BeH2
 
@@ -439,8 +439,8 @@ def BeH2(distance=None, freeze_core=True, remove_orbitals=None, operator=True, i
 			return qubit_op, init_state
 
 
-def H2O(distance=None, freeze_core=True, remove_orbitals=None, operator=True, initial_state=False,
-		mapper_type='ParityMapper'):  #
+def H2O(distance=None, freeze_core=True, remove_orbitals=None, initial_state=False, operator=True,
+        mapper_type='ParityMapper'):
 	"""
 	Qiskit operator of the BeH2
 
@@ -514,7 +514,7 @@ def H2O(distance=None, freeze_core=True, remove_orbitals=None, operator=True, in
 	# The fermionic operators are mapped
 	converter = QubitConverter(mapper=mapper, two_qubit_reduction=True)
 
-	if operator is False:
+	if not operator:
 		return converter, problem
 	else:
 		# num_particles = (problem.grouped_property_transformed.get_property("ParticleNumber").num_alpha,
@@ -531,18 +531,123 @@ def H2O(distance=None, freeze_core=True, remove_orbitals=None, operator=True, in
 			return qubit_op, init_state
 
 
+def CH4(distance=None, freeze_core=True, remove_orbitals=None, initial_state=False, operator=True,
+        mapper_type='ParityMapper'):
+	"""
+	Qiskit operator of the CH4
+
+	Parameters
+	----------
+	distance: float (optional)
+		Distance between atoms of Be and H
+	freeze_core: Bool (optional)
+		If freeze some cores that do highly impact in the energy
+	remove_orbitals: Bool (optional)
+		Remove some orbitals that do no impact in the energy
+	initial_state: Bool (optional)
+		Return the initial Hartree Fock state
+	operator: Bool (optional)
+
+	mapper_type: str (optional)
+		Type of mapping between orbitals and qubits. Available options:
+			'ParityMapper'
+			'JordanWignerMapper'
+			'BravyiKitaevMapper'
+
+	Returns
+	-------
+	qubit_op: SummedOp
+		Pauli strings and coefficients for the Hamiltonian
+	init_state: QuantumCircuit (if initial_state=True)
+		Quantum Circuit with the initial state given by Hartree Fock
+	"""
+
+	if distance is None:
+		distance = 0.9573
+
+	if remove_orbitals is None:
+		remove_orbitals = [7, 8]
+
+	#          H(1)
+	#          O
+	#   H(2)      H(3)   H(4)
+
+	theta = 109.5
+	r_inf = distance * np.cos(np.deg2rad(theta - 90))
+	height_low = distance * np.sin(np.deg2rad(theta - 90))
+
+	H1 = np.array([0, 0, distance])
+	H2 = np.array([r_inf, 0, -height_low])
+	H3 = np.array([-r_inf * np.cos(np.pi / 3), r_inf * np.sin(np.pi / 3), -height_low])
+	H4 = np.array([-r_inf * np.cos(np.pi / 3), -r_inf * np.sin(np.pi / 3), -height_low])
+
+	molecule = 'O 0 0 0; H {}; H {}; H {}; H {}'.format(str(H1)[1:-1], str(H2)[1:-1], str(H3)[1:-1], str(H4)[1:-1])
+
+	try:
+		driver = PySCFDriver(molecule)
+	except Exception:
+		from qiskit_nature.drivers.second_quantization.pyquanted import PyQuanteDriver
+		driver = PyQuanteDriver(molecule)
+
+	if remove_orbitals is False:
+		Transformer = FreezeCoreTransformer(freeze_core=freeze_core)
+	else:
+		Transformer = FreezeCoreTransformer(freeze_core=freeze_core, remove_orbitals=remove_orbitals)
+
+	problem = ElectronicStructureProblem(driver, transformers=[Transformer])
+
+	# Generate the second-quantized operators
+	second_q_ops = problem.second_q_ops()
+
+	# Hamiltonian
+	main_op = second_q_ops[0]
+
+	# Setup the mapper and qubit converter
+	if mapper_type == 'ParityMapper':
+		mapper = ParityMapper()
+	elif mapper_type == 'JordanWignerMapper':
+		mapper = JordanWignerMapper()
+	elif mapper_type == 'BravyiKitaevMapper':
+		mapper = BravyiKitaevMapper()
+	else:
+		return None
+
+	# The fermionic operators are mapped
+	converter = QubitConverter(mapper=mapper, two_qubit_reduction=True)
+
+	if not operator:
+		return converter, problem
+	else:
+		particle_number = problem.grouped_property_transformed.get_property("ParticleNumber")
+		num_particles = (particle_number.num_alpha, particle_number.num_beta)
+		num_spin_orbitals = particle_number.num_spin_orbitals
+		qubit_op = converter.convert(main_op, num_particles=num_particles)
+		if initial_state is False:
+			return qubit_op
+		else:
+			init_state = HartreeFock(num_spin_orbitals, num_particles, converter)
+			return qubit_op, init_state
+
+
 def molecules(molecule_name, distance=None, freeze_core=True, remove_orbitals=None, operator=True, initial_state=False,
-			  mapper_type='ParityMapper'):
+              mapper_type='ParityMapper'):
 	molecule_name = molecule_name.lower()
 
 	if molecule_name == 'h2':
-		return H2(distance, freeze_core, remove_orbitals, initial_state, operator, mapper_type)
+		return H2(distance=distance, freeze_core=freeze_core, remove_orbitals=remove_orbitals,
+		          initial_state=initial_state, operator=operator, mapper_type=mapper_type)
 	elif molecule_name == 'lih':
-		return LiH(distance, freeze_core, remove_orbitals, initial_state, operator, mapper_type)
+		return LiH(distance=distance, freeze_core=freeze_core, remove_orbitals=remove_orbitals,
+		           initial_state=initial_state, operator=operator, mapper_type=mapper_type)
 	elif molecule_name == 'beh2':
-		return BeH2(distance, freeze_core, remove_orbitals, initial_state, operator, mapper_type)
+		return BeH2(distance=distance, freeze_core=freeze_core, remove_orbitals=remove_orbitals,
+		            initial_state=initial_state, operator=operator, mapper_type=mapper_type)
 	elif molecule_name == 'h2o':
-		return H2O(distance, freeze_core, remove_orbitals, initial_state, operator, mapper_type)
+		return H2O(distance=distance, freeze_core=freeze_core, remove_orbitals=remove_orbitals,
+		           initial_state=initial_state, operator=operator, mapper_type=mapper_type)
+	elif molecule_name == 'ch4':
+		return CH4(distance=distance, freeze_core=freeze_core, remove_orbitals=remove_orbitals,
+		           initial_state=initial_state, operator=operator, mapper_type=mapper_type)
 	else:
 		print('The molecule is not implemented')
 		return None
@@ -779,7 +884,7 @@ def question_overwrite(name):
 
 def save_figure(fig, file_dic):
 	fig.savefig(file_dic, bbox_inches="tight",
-				dpi=600)  # Save the figure with the corresponding file direction and the correct extension
+	            dpi=600)  # Save the figure with the corresponding file direction and the correct extension
 
 
 def save_data(data, file_dic):
@@ -787,7 +892,7 @@ def save_data(data, file_dic):
 
 
 def save_object(object_save, name, overwrite=None, extension=None, dic=None, prefix='', back=0,
-				temp=False, index=0, ask=True, extent=False, silent=False):
+                temp=False, index=0, ask=True, extent=False, silent=False):
 	"""
 	Save a given figure or date. We must introduce the name with which we want to save the file. If the file already
 	exist, then we will be asked if we want to overwrite it. We can also change the	extension used to save the image.
@@ -870,7 +975,7 @@ def save_object(object_save, name, overwrite=None, extension=None, dic=None, pre
 
 
 def n_groups_shuffle(paulis, G, seed, shuffle_paulis=True, shuffle_qubits=True, x=1, n_max=10000, n_delete=0,
-					 connected=False, order=True, basis_group=None):
+                     connected=False, order=True, basis_group=None, full_output=False):
 	num_qubits = len(paulis[0])
 	G_new = copy.deepcopy(G)
 
@@ -889,7 +994,7 @@ def n_groups_shuffle(paulis, G, seed, shuffle_paulis=True, shuffle_qubits=True, 
 				return np.nan, None, None, G_new
 			else:
 				return n_groups_shuffle(paulis, G, seed, shuffle_paulis=shuffle_paulis,
-										shuffle_qubits=shuffle_qubits, x=x, n_max=n_max - 1, n_delete=n_delete)
+				                        shuffle_qubits=shuffle_qubits, x=x, n_max=n_max - 1, n_delete=n_delete)
 
 	np.random.seed(seed)
 	order_paulis = np.arange(len(paulis))
@@ -905,12 +1010,43 @@ def n_groups_shuffle(paulis, G, seed, shuffle_paulis=True, shuffle_qubits=True, 
 			paulis[:, i] = temp[:, order_qubits[i]]
 
 	if order:
-		Groups, _, _ = groupingWithOrder(paulis[order_paulis], G_new, connected=connected)
+		if full_output:
+			Groups, Measurements, T = groupingWithOrder(paulis[order_paulis], G_new, connected=connected)
+		else:
+			Groups, _, _ = groupingWithOrder(paulis[order_paulis], G_new, connected=connected)
 	else:
 		if basis_group is None:
 			basis_group = [4, 6, 7, 8, 9, 5, 3, 2, 1]
 
 		WC = list(G.edges())
-		Groups, _ = grouping(paulis[order_paulis], basis_group, WC)
 
-	return len(Groups), order_paulis, order_qubits, G_new
+		if full_output:
+			Groups, Measurements = grouping(paulis[order_paulis], basis_group, WC)
+		else:
+			Groups, _ = grouping(paulis[order_paulis], basis_group, WC)
+
+	output = [len(Groups), order_paulis, order_qubits, G_new]
+	if full_output:
+		output.append(Measurements)
+
+		if order:
+			output.append(T)
+
+	return output
+
+
+def unconnected_measurements(WC, Measurements, T=None):
+	if T is None:
+		T = np.arange(np.max(WC) + 1)
+
+	counter = 0
+	for Groups in Measurements:
+		for measurement in Groups:
+			if measurement[0] > 3:
+				qubit_1_teo, qubit_2_teo = measurement[1]
+				qubit_1_phys = T[qubit_1_teo]
+				qubit_2_phys = T[qubit_2_teo]
+				if (qubit_1_phys, qubit_2_phys) not in WC:
+					counter += 1
+
+	return counter
