@@ -14,7 +14,7 @@ from qiskit_nature.drivers.second_quantization import PySCFDriver
 import os
 import copy
 import sys
-from GroupingAlgorithm import groupingWithOrder, grouping
+from GroupingAlgorithm import groupingWithOrder, TPBgrouping, grouping
 from networkx import is_connected
 
 
@@ -1070,7 +1070,7 @@ def save_object(object_save, name, overwrite=None, extension=None, dic=None, pre
 
 
 def n_groups_shuffle(paulis, G, seed, shuffle_paulis=True, shuffle_qubits=True, x=1, n_max=10000, n_delete=0,
-                     connected=False, order=True, basis_group=None, full_output=False):
+                     connected=False, order=True, basis_group=None, full_output=False, grouping_method='Entangled'):
 	num_qubits = len(paulis[0])
 	G_new = copy.deepcopy(G)
 
@@ -1104,28 +1104,37 @@ def n_groups_shuffle(paulis, G, seed, shuffle_paulis=True, shuffle_qubits=True, 
 		for i in range(len(order_qubits)):
 			paulis[:, i] = temp[:, order_qubits[i]]
 
-	if order:
-		if full_output:
-			Groups, Measurements, T = groupingWithOrder(paulis[order_paulis], G_new, connected=connected)
+	if grouping_method.lower() == 'entangled':
+		if order:
+			if full_output:
+				Groups, Measurements, T = groupingWithOrder(paulis[order_paulis], G_new, connected=connected)
+			else:
+				Groups, _, _ = groupingWithOrder(paulis[order_paulis], G_new, connected=connected)
 		else:
-			Groups, _, _ = groupingWithOrder(paulis[order_paulis], G_new, connected=connected)
-	else:
-		if basis_group is None:
-			basis_group = [4, 6, 7, 8, 9, 5, 3, 2, 1]
+			if basis_group is None:
+				basis_group = [4, 6, 7, 8, 9, 5, 3, 2, 1]
 
-		WC = list(G.edges())
+			WC = list(G.edges())
 
+			if full_output:
+				Groups, Measurements = grouping(paulis[order_paulis], basis_group, WC)
+			else:
+				Groups, _ = grouping(paulis[order_paulis], basis_group, WC)
+	elif grouping_method.lower() == 'tpb':
 		if full_output:
-			Groups, Measurements = grouping(paulis[order_paulis], basis_group, WC)
+			_, Groups, Measurements = TPBgrouping(paulis)
 		else:
-			Groups, _ = grouping(paulis[order_paulis], basis_group, WC)
+			_, Groups, _ = TPBgrouping(paulis)
 
 	output = [len(Groups), order_paulis, order_qubits, G_new]
 	if full_output:
+		output.append(Groups)
 		output.append(Measurements)
 
-		if order:
+		if order and grouping_method.lower() == 'entangled':
 			output.append(T)
+		else:
+			output.append(None)
 
 	return output
 
