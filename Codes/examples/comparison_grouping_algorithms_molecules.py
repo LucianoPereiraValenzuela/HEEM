@@ -15,7 +15,7 @@ import networkx as nx
 from time import time
 
 # ------------  Default parameters calculation  --------------------
-clear_start = True
+clear_start = False
 
 molecule_name = 'LiH'
 n_jobs = -1
@@ -38,7 +38,7 @@ message_help = file_name + '.py -m <molecule ({})> -j <#JOBS ({})> -t <time save
 
 try:
 	argv = sys.argv[1:]
-	opts, args = getopt.getopt(argv, "hm:j:t:T:N:")
+	opts, args = getopt.getopt(argv, "hm:j:t:T:N:c:")
 except getopt.GetoptError:
 	print(message_help)
 	sys.exit(2)
