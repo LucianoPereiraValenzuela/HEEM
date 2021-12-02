@@ -301,7 +301,7 @@ def MeasurementAssignment(Vi, Vj, Mi, AM, WC):
 	return UMi, True
 
 
-def grouping(PS, AM, WC=None):
+def grouping(PS, AM=None, WC=None):
 	"""
 	Given a set of Pauli strings (PS), this function makes groups of PS assigning the admissible measurements (AM)
 	on the well connected qubits (WC).
@@ -329,6 +329,10 @@ def grouping(PS, AM, WC=None):
 		a list of partial measurements. Each partial measurements is a list of two elements. The first of these elements
 		encodes the partial measurement assigned and the second the qubits where it should performed.
 	"""
+
+	if AM is None:
+		AM = [4, 6, 7, 8, 9, 5, 3, 2, 1]
+
 	PG = PauliGraph(PS)
 	SV = sorted(PG.degree, key=lambda x: x[1], reverse=True)  # Sorted Vertices by decreasing degree.
 	n = np.size(PS[:, 0])
@@ -981,7 +985,7 @@ def MeasurementAssignmentWithOrder(Vi, Vj, Mi, AM, WC, OQ, T):
 	return UMi, True
 
 
-def groupingWithOrder(PS, G, connected=False):
+def groupingWithOrder(PS, G=None, connected=False):
 	"""
 	Given a set of Pauli strings (PS), this function makes groups of PS assigning taking into account the chip's
 	connectivity.
@@ -1015,18 +1019,28 @@ def groupingWithOrder(PS, G, connected=False):
 	through T, in other words T[i]=j, we use the index i and not the j to refer to that qubit)
 	"""
 
+	n, N = np.shape(PS)
+
+	if G is None:
+		G = nx.Graph()
+		G.add_edges_from(list(permutations(list(range(N)), 2)))
+
 	if type(G) == nx.classes.graph.Graph:
 		pass
 	elif type(G) == list:
 		temp = copy.copy(G)
 		G = nx.Graph()
-		G.add_nodes_from(range(np.max(temp) + 1))
+		# G.add_nodes_from(range(np.max(temp) + 1))
 		G.add_edges_from(temp)
+
+	if len(G.nodes) < len(PS[0]):
+		raise Exception('The number of qubits in the device is not high enough. Use a bigger device.')
 
 	PG = PauliGraph(PS)
 	SV = sorted(PG.degree, key=lambda x: x[1], reverse=True)
-	n = np.size(PS[:, 0])
-	N = np.size(PS[0, :])
+	# n = np.size(PS[:, 0])
+	# N = np.size(PS[0, :])
+
 	WC = list(G.edges)  # list of pairs of well connected qubits
 	AS = []  # List of strings with assigned measurement
 	C = compatibilities(PS)
@@ -1070,5 +1084,10 @@ def groupingWithOrder(PS, G, connected=False):
 			"""
 			Groups.append(GroupMi)
 			Measurements.append(Mi)
+
+	# # Ensure the order for entangled measurements
+	# for i in range(len(Measurements)):
+	# 	for j in range(len(Measurements[i])):
+	# 		Measurements[i][j][1] = sorted(Measurements[i][j][1])
 
 	return Groups, Measurements, T

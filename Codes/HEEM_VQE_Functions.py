@@ -203,7 +203,7 @@ def generate_diagonal_factors(*factors):
 # 	return circuit, n_measures
 
 
-def measure_circuit_factor(measurements, n_qubits):
+def measure_circuit_factor(measurements, n_qubits, make_measurements=True):
 	"""
 
 	This functions differs from the original one in the way to map the measurements to the classical register. In order
@@ -234,6 +234,8 @@ def measure_circuit_factor(measurements, n_qubits):
 		q_0.
 	n_qubits: int
 		Total number of qubits in the circuit. This values does not have to coincide with the number of measured qubits.
+	make_measurements: bool (optional)
+		If True, include measurement gates at the end of the circuit.
 
 	Returns
 	-------
@@ -257,8 +259,8 @@ def measure_circuit_factor(measurements, n_qubits):
 
 	for measure in measurements:  # Iterate over all the measurements
 		measure_label, qubits = measure  # Extract the index of the measurement and the measured qubits
-		qubits = np.abs(np.array(qubits) - n_qubits + 1)  # Goes to the qiskit convention
-		qubits = sorted(qubits)  # Ensure the order of the qubits of entangled measurements
+		qubits = list(np.abs(np.array(qubits) - n_qubits + 1))[::-1]  # Goes to the qiskit convention
+		# qubits = sorted(qubits)  # Ensure the order of the qubits of entangled measurements
 		measured_qubits.append(qubits)
 
 		if measure_label == 0:
@@ -305,13 +307,15 @@ def measure_circuit_factor(measurements, n_qubits):
 			circuit.cnot(qubits[0], qubits[1])
 			circuit.h(qubits[0])
 
-		circuit.measure(qubits, qubits)
+		if make_measurements:
+			circuit.measure(qubits, qubits)
 
-	measured_qubits = [item for sublist in measured_qubits for item in sublist]
-	qubits = np.arange(n_qubits)
-	for qubit in qubits:
-		if qubit not in measured_qubits:
-			circuit.measure(qubit, qubit)
+	if make_measurements:
+		measured_qubits = [item for sublist in measured_qubits for item in sublist]
+		qubits = np.arange(n_qubits)
+		for qubit in qubits:
+			if qubit not in measured_qubits:
+				circuit.measure(qubit, qubit)
 
 	# circuit.measure(range(n_qubits), cr)
 
