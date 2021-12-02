@@ -42,7 +42,7 @@ class VQE(MinimumEigensolver):
 	             callback: Optional[Callable[[int, np.ndarray, float, None], None]] = None,
 	             quantum_instance: Optional[Union[QuantumInstance, BaseBackend, Backend]] = AerSimulator(
 		             method='statevector'),
-	             Measurements: Optional[Union[list]] = None,
+	             Measurements: Optional[list] = None,
 	             layout: Optional[Union[list]] = None,
 	             Groups: Optional[Union[list[list[int]]]] = None) -> None:
 		"""

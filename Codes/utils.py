@@ -745,7 +745,7 @@ def molecules(molecule_name, distance=None, freeze_core=True, remove_orbitals=No
 		return C2H2(distance=distance, freeze_core=freeze_core, remove_orbitals=remove_orbitals,
 		            initial_state=initial_state, operator=operator, mapper_type=mapper_type)
 	else:
-		raise Exception('The molecule is not implemented.')
+		raise Exception('The molecule {} is not implemented.'.format(molecule_name))
 
 
 # DEPRECATED
@@ -1057,7 +1057,7 @@ def save_object(object_save, name, overwrite=None, extension=None, dic=None, pre
 	if overwrite:  # Depending on the answer of the user
 		save_function(object_save, file_dic + '.' + extension)
 		if not silent:
-			print(object_type, 'saved')
+			print(object_type, 'saved as', file_dic + '.' + extension)
 	elif extent:
 		# If the user does not want to over write, a copy is saved
 		# The copy will include the typical (1) at the end of the name, if this already exist then (2) without asking.
@@ -1070,7 +1070,8 @@ def save_object(object_save, name, overwrite=None, extension=None, dic=None, pre
 
 
 def n_groups_shuffle(paulis, G, seed, shuffle_paulis=True, shuffle_qubits=True, x=1, n_max=10000, n_delete=0,
-                     connected=False, order=True, basis_group=None, full_output=False, grouping_method='Entangled'):
+                     connected=False, full_output=False, grouping_method='Entangled', order=True, AM=None,
+                     minimal_output=False):
 	num_qubits = len(paulis[0])
 	G_new = copy.deepcopy(G)
 
@@ -1106,34 +1107,27 @@ def n_groups_shuffle(paulis, G, seed, shuffle_paulis=True, shuffle_qubits=True, 
 
 	if grouping_method.lower() == 'entangled':
 		if order:
-			if full_output:
-				Groups, Measurements, T = groupingWithOrder(paulis[order_paulis], G_new, connected=connected)
-			else:
-				Groups, _, _ = groupingWithOrder(paulis[order_paulis], G_new, connected=connected)
+			Groups, Measurements, T = groupingWithOrder(paulis[order_paulis], G_new, connected=connected)
+
 		else:
-			if basis_group is None:
-				basis_group = [4, 6, 7, 8, 9, 5, 3, 2, 1]
+			Groups, Measurements = grouping(paulis[order_paulis], AM=AM, WC=list(G_new.edges))
 
-			WC = list(G.edges())
-
-			if full_output:
-				Groups, Measurements = grouping(paulis[order_paulis], basis_group, WC)
-			else:
-				Groups, _ = grouping(paulis[order_paulis], basis_group, WC)
 	elif grouping_method.lower() == 'tpb':
-		if full_output:
-			_, Groups, Measurements = TPBgrouping(paulis)
-		else:
-			_, Groups, _ = TPBgrouping(paulis)
+		_, Groups, Measurements = TPBgrouping(paulis)
+	else:
+		raise Exception('Invalid grouping method.')
+
+	if minimal_output:
+		return len(Groups)
 
 	output = [len(Groups), order_paulis, order_qubits, G_new]
 	if full_output:
 		output.append(Groups)
 		output.append(Measurements)
 
-		if order and grouping_method.lower() == 'entangled':
+		try:
 			output.append(T)
-		else:
+		except NameError:
 			output.append(None)
 
 	return output
@@ -1154,3 +1148,16 @@ def unconnected_measurements(WC, Measurements, T=None):
 					counter += 1
 
 	return counter
+
+
+def number_cnots(circuits, qi):
+	circuits = qi.transpile(circuits)
+
+	n_cnots = 0
+	for circuit in circuits:
+		try:
+			n_cnots += circuit.count_ops()['cx']
+		except KeyError:
+			pass
+
+	return n_cnots
