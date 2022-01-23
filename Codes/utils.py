@@ -16,6 +16,7 @@ import copy
 import sys
 from GroupingAlgorithm import groupingWithOrder, TPBgrouping, grouping
 from networkx import is_connected
+from datetime import datetime
 
 
 # from IPython import get_ipython
@@ -1161,3 +1162,8 @@ def number_cnots(circuits, qi):
 			pass
 
 	return n_cnots
+
+
+def current_time():
+	now = datetime.now()
+	return now.strftime("%d/%m/%Y, %H:%M:%S")
