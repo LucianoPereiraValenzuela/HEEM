@@ -13,6 +13,7 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 import networkx as nx
 from time import time
+from itertools import permutations
 
 # ------------  Default parameters calculation  --------------------
 clear_start = False
@@ -22,23 +23,25 @@ n_jobs = -1
 time_save = 60  # (min)
 total_time = 48 * 60  # (min)
 N_test = 100
+grouping = 'HEEM'
 
 name_backend = 'ibmq_montreal'
 backend_parallel = 'multiprocessing'
 file_name = 'comparison_grouping_algorithms_molecules'
-
 # ---------------------------------------------------------
 message_help = file_name + '.py -m <molecule ({})> -j <#JOBS ({})> -t <time save (min) ({})> ' \
-                           '-T <time total (min) ({})> -N <# tests ({})>, -c <clear start ({})>'.format(molecule_name,
-                                                                                                        n_jobs,
-                                                                                                        time_save,
-                                                                                                        total_time,
-                                                                                                        N_test,
-                                                                                                        clear_start)
+                           '-T <time total (min) ({})> -N <# tests ({})>, -c <clear start ({})>,' \
+                           ' -g <grouping ({})>'.format(molecule_name,
+                                                        n_jobs,
+                                                        time_save,
+                                                        total_time,
+                                                        N_test,
+                                                        clear_start,
+                                                        grouping)
 
 try:
 	argv = sys.argv[1:]
-	opts, args = getopt.getopt(argv, "hm:j:t:T:N:c:")
+	opts, args = getopt.getopt(argv, "hm:j:t:T:N:c:g:")
 except getopt.GetoptError:
 	print(message_help)
 	sys.exit(2)
@@ -59,15 +62,24 @@ for opt, arg in opts:
 		N_test = int(arg)
 	elif opt == '-c':
 		clear_start = bool(arg)
+	elif opt == '-g':
+		grouping = str(arg)
 
 if n_jobs == -1:
 	n_jobs = os.cpu_count()
 
 N_test = int(np.ceil(N_test / n_jobs) * n_jobs)
 
+file_name += '_' + grouping
+
 # Start calculation
 if __name__ == '__main__':
-	qubit_op = molecules(molecule_name)
+	try:
+		qubit_op = np.load('../data/big_molecules.npy', allow_pickle=True).item()[molecule_name]
+		print('Data loaded')
+	except KeyError:
+		qubit_op = molecules(molecule_name)
+
 	n_qubits = qubit_op.num_qubits
 	paulis, _, _ = Label2Chain(qubit_op)
 	print(
@@ -81,9 +93,15 @@ if __name__ == '__main__':
 	backend = provider.get_backend(name_backend)
 	WC_device = get_backend_connectivity(backend)
 
-	G_device = nx.Graph()
-	G_device.add_nodes_from(range(n_qubits))
-	G_device.add_edges_from(WC_device)
+	if grouping.lower() == 'heem':
+		G = nx.Graph()
+		G.add_nodes_from(range(n_qubits))
+		G.add_edges_from(WC_device)
+	elif grouping.lower() == 'em':
+		G = nx.Graph()
+		G.add_edges_from(list(permutations(list(range(n_qubits)), 2)))
+	else:
+		raise Exception('Grouping method not implemented. The current available algorithms are HEEM and EM.')
 
 	labels = ['naive', 'order_disconnected', 'order_connected']
 
@@ -96,7 +114,7 @@ if __name__ == '__main__':
 	start = time()
 	pbar = tqdm(range(N_test), desc='Test grouping', file=sys.stdout, ncols=90)
 	results = Parallel(n_jobs=n_jobs, backend=backend_parallel)(
-		delayed(n_groups_shuffle)(paulis, G_device, None, order=False) for _ in pbar)
+		delayed(n_groups_shuffle)(paulis, G, None, order=False) for _ in pbar)
 	total_time_test = time() - start
 
 	average_time = total_time_test / N_test / 60 * 3  # (min)
@@ -113,21 +131,21 @@ if __name__ == '__main__':
 		start = time()
 		pbar = tqdm(range(batch_size), desc='  Grouping', ncols=90, file=sys.stdout, leave=False)
 		results = Parallel(n_jobs=n_jobs, backend=backend_parallel)(
-			delayed(n_groups_shuffle)(paulis, G_device, None, order=False) for _ in pbar)
+			delayed(n_groups_shuffle)(paulis, G, None, order=False) for _ in pbar)
 		n_groups['naive'] = [result[0] for result in results]
 		times['naive'] = time() - start
 
 		start = time()
 		pbar = tqdm(range(batch_size), desc='  Grouping + order', ncols=90, file=sys.stdout, leave=False)
 		results = Parallel(n_jobs=n_jobs, backend=backend_parallel)(
-			delayed(n_groups_shuffle)(paulis, G_device, None, order=True, connected=False) for _ in pbar)
+			delayed(n_groups_shuffle)(paulis, G, None, order=True, connected=False) for _ in pbar)
 		n_groups['order_disconnected'] = [result[0] for result in results]
 		times['order_disconnected'] = time() - start
 
 		start = time()
 		pbar = tqdm(range(batch_size), desc='  Grouping + order + connected ', ncols=90, file=sys.stdout, leave=False)
 		results = Parallel(n_jobs=n_jobs, backend=backend_parallel)(
-			delayed(n_groups_shuffle)(paulis, G_device, None, order=True, connected=True) for _ in pbar)
+			delayed(n_groups_shuffle)(paulis, G, None, order=True, connected=True) for _ in pbar)
 		n_groups['order_connected'] = [result[0] for result in results]
 		times['order_connected'] = time() - start
 
@@ -137,7 +155,13 @@ if __name__ == '__main__':
 			data = {}
 
 		if molecule_name not in data:
-			parameters = {'name_backend': name_backend}
+			if grouping.lower() == 'heem':
+				parameters = {'name_backend': name_backend}
+			elif grouping.lower() == 'em':
+				parameters = {}
+			else:
+				parameters = None
+
 			data[molecule_name] = {'times': {'naive': 0, 'order_disconnected': 0, 'order_connected': 0},
 			                       'parameters': parameters}
 

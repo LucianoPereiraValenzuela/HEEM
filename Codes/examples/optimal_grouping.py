@@ -19,13 +19,12 @@ from itertools import permutations
 molecule_name = 'BeH2'
 N_test = 100
 n_jobs = -1
-time_save = 0.5  # (min)
+time_save = 3  # (min)
 total_time = 3  # (min)
 
 file_name = 'optimal_grouping'
 name_backend = 'ibmq_montreal'
 backend_parallel = 'multiprocessing'
-
 # ---------------------------------------------------------
 message_help = file_name + '.py -m <molecule ({})> -j <#JOBS ({})> -t <time save (min) ({})> ' \
                            '-T <time total (min) ({})> -N <# tests ({})>, '.format(molecule_name, n_jobs, time_save,
@@ -128,7 +127,7 @@ if __name__ == '__main__':
 		            desc='EM: Computing batch {} / {}'.format(i + 1, int(np.ceil(N_total / batch_size))),
 		            file=sys.stdout, ncols=90)
 		results['EM'] = Parallel(n_jobs=n_jobs, backend=backend_parallel)(
-			delayed(n_groups_shuffle)(paulis, G_ideal, None, grouping_method='entangled', order=False,
+			delayed(n_groups_shuffle)(paulis, G_ideal, None, grouping_method='entangled', connected=True,
 			                          full_output=True) for i in pbar)
 		n_groups['EM'] = [result[0] for result in results['EM']]
 
@@ -137,9 +136,8 @@ if __name__ == '__main__':
 		            desc='HEEM: Computing batch {} / {}'.format(i + 1, int(np.ceil(N_total / batch_size))),
 		            file=sys.stdout, ncols=90)
 		results['HEEM'] = Parallel(n_jobs=n_jobs, backend=backend_parallel)(
-			delayed(n_groups_shuffle)(paulis, G_device, None, grouping_method='entangled', order=True, connected=True,
-			                          full_output=True)
-			for i in pbar)
+			delayed(n_groups_shuffle)(paulis, G_device, None, grouping_method='entangled', connected=True,
+			                          full_output=True) for i in pbar)
 		n_groups['HEEM'] = [result[0] for result in results['HEEM']]
 
 		for label in labels:
