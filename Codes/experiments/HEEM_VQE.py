@@ -67,7 +67,7 @@ def main(backend,
                  callback = callback)
     results = solver.compute_minimum_eigenvalue( hamiltonian )
 
-    return { 'results': 0} #results_to_dict(results, energies)
+    return results_to_dict(results, energies)
 
 def results_to_dict(results, energies):
     
