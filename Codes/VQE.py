@@ -242,14 +242,10 @@ class VQE(MinimumEigensolver):
 		if self._grouping.lower() == 'entangled' and self._layout is None:
 			raise Exception('When using a pre-calculated grouping with order needs the teo-phys maps between qubits.')
 
-		self._quantum_instance.set_config(initial_layout=self._layout)
+		self._quantum_instance.set_config(initial_layout=self._layout[::-1])
 
-		circuits = []
-		n_measure = []
-		for measure in self._Measurements:
-			circuits_temp, n_measure_temp = measure_circuit_factor(measure, num_qubits)
-			circuits.append(circuits_temp.compose(self._ansatz, front=True))
-			n_measure.append(n_measure_temp)
+		circuits = [(measure_circuit_factor(measure, num_qubits).compose(self._ansatz, front=True))
+		            for measure in self._Measurements]
 
 		self._prob2Exp = probability2expected(self._coeff, self._label, self._Groups, self._Measurements)
 
@@ -266,7 +262,10 @@ class VQE(MinimumEigensolver):
 
 		n_cnots = []
 		for circuit in circuits:
-			n_cnots.append(circuit.count_ops()['cx'])
+			try:
+				n_cnots.append(circuit.count_ops()['cx'])
+			except KeyError:
+				n_cnots.append(0)
 
 		return n_cnots, circuits
 

@@ -205,7 +205,6 @@ def generate_diagonal_factors(*factors):
 
 def measure_circuit_factor(measurements, n_qubits, make_measurements=True):
 	"""
-
 	This functions differs from the original one in the way to map the measurements to the classical register. In order
 	to include Measurement Error Mitigation, so all the qubits are measured in the correct order.
 
@@ -241,27 +240,16 @@ def measure_circuit_factor(measurements, n_qubits, make_measurements=True):
 	-------
 	circuit: quantum circuit
 		Circuit (including quantum and classical registers) with the gates needed to perform the measurements.
-	n_measures: int
-		Number of measured qubits
 	"""
-	# Initialize the number of measured qubits to 0 and a list with the classical registers for each measurement
-	n_measures = 0
-	for measure in measurements:
-		if measure[0] != 0:  # If the operation is not the identity
-			n_measures += len(measure[1])
-
 	# Create the quantum circuit
 	qr = QuantumRegister(n_qubits)
 	cr = ClassicalRegister(n_qubits)
 	circuit = QuantumCircuit(qr, cr)
 
-	measured_qubits = []
-
 	for measure in measurements:  # Iterate over all the measurements
 		measure_label, qubits = measure  # Extract the index of the measurement and the measured qubits
+
 		qubits = list(np.abs(np.array(qubits) - n_qubits + 1))[::-1]  # Goes to the qiskit convention
-		# qubits = sorted(qubits)  # Ensure the order of the qubits of entangled measurements
-		measured_qubits.append(qubits)
 
 		if measure_label == 0:
 			# No measurement
@@ -310,16 +298,7 @@ def measure_circuit_factor(measurements, n_qubits, make_measurements=True):
 		if make_measurements:
 			circuit.measure(qubits, qubits)
 
-	if make_measurements:
-		measured_qubits = [item for sublist in measured_qubits for item in sublist]
-		qubits = np.arange(n_qubits)
-		for qubit in qubits:
-			if qubit not in measured_qubits:
-				circuit.measure(qubit, qubit)
-
-	# circuit.measure(range(n_qubits), cr)
-
-	return circuit, n_measures
+	return circuit
 
 
 def probability2expected(Pauli_weights, Pauli_labels, Groups, Measurements, shift=True):
@@ -336,7 +315,7 @@ def probability2expected(Pauli_weights, Pauli_labels, Groups, Measurements, shif
 	Groups: list(list(int))
 		List in which each element is represented the indices of pauli string that are measured simultaneously.
 	Measurements: list(list(int, list(int)))
-		List with all the measurements. Each measured is a list in which the first index in the int encoding the
+		List with all the measurements. Each measurement is a list in which the first index is an int encoding the
 		measurement, and the second element is another list with the indices of the measured qubits. The convention for
 		the indices of the qubits is opposite to the qiskit convention. Here the qubit with higher weight is named as
 		q_0.
