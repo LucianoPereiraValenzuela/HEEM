@@ -1,6 +1,8 @@
 ![Entanglement Qubits - Apaisado](https://user-images.githubusercontent.com/11279156/120717557-0ae1b700-c4c8-11eb-92b0-54f718282f7d.png)
 # Hardware-efficient-variational-quantum-eigensolver-with-entangled-measurements
 
+[![DOI](https://zenodo.org/badge/360313020.svg)](https://zenodo.org/badge/latestdoi/360313020)
+
 The Variational Quantum Eigensolver (VQE) is a hybrid quantum-classical algorithm whose aim is to find the ground state of a Quantum Hamiltonian. 
 Implementing VQE in NISQ devices is challenging. The two main obstacles are: 
 
