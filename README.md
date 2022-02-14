@@ -13,7 +13,7 @@ Both difficulties have been studied independently. ¿Can they be tackled simulta
 
 We propose to use Hardware-Efficient Entangled Measurements (HEEM), which are measurements that take advantage of entanglement between neighboring qubits according to the device’s architecture. The usage of HEEM reduces the number of measurements needed to perform VQE without compromising the quality of the experiment.
 
-In this github we implement the VQE algorithm using HEEM to estimate the energy.
+In this github we implement the VQE algorithm using HEEM to estimate the energy. Cite to the doi: 10.5281/zenodo.6074767 
 
 ## Dependences
 
