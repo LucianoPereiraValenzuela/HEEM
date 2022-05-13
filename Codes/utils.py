@@ -1291,47 +1291,32 @@ def recover_measurements(measurements_indices, qubits):
     return measurements
 
 
-def flatten_prob2Exp(diagonals_0, factors_0):
-    diagonals = []
+def load_grouping_data(molecule_name, method):
+    file = '../data/groupings/' + molecule_name + '/'
 
-    for group in diagonals_0:
-        for measure in group:
-            diagonals += measure.tolist()
-            diagonals.append(-2)
-        diagonals.append(-3)
+    try:
+        np.load(file + 'Measurements_qubits_' + method + '.npy')
+        data_computed = True
+        print('Data loaded')
+    except FileNotFoundError:
+        print('Data does not exist.')
+        data_computed = False
 
-    factors = [x for item in factors_0 for x in item]
+    if data_computed:
+        Groups = recover_groups(np.load(file + 'Groups_' + method + '.npy'))
 
-    return diagonals, factors
+        Mesurements = recover_measurements(np.load(file + 'Measurements_' + method + '.npy'),
+                                           np.load(file + 'Measurements_qubits_' + method + '.npy').tolist())
 
+        returns = [Groups, Mesurements]
 
-def recover_prob2Exp(diagonals, factors):
-    prob2Exp = []
-
-    temp = []
-    index_measure = 0
-    while True:
         try:
-            index_measure = diagonals.index(-2)
-        except ValueError:
+            layout = np.load(file + 'layout_' + method + '.npy', allow_pickle=True).tolist()
+            returns.append(layout)
+        except FileNotFoundError:
             pass
 
-        try:
-            index_group = diagonals.index(-3)
-        except ValueError:
-            break
+        return returns
 
-        if index_measure < index_group:
-            temp.append(diagonals[:index_measure])
-            del (diagonals[:index_measure + 1])
-        else:
-            n = len(temp)
-            temp = np.array(temp) * np.array(factors[:n])[:, None]
-
-            del (factors[:n])
-            del (diagonals[0])
-
-            prob2Exp.append(temp)
-            temp = []
-
-    return prob2Exp
+    else:
+        return None
