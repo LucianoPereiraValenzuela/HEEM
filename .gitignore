@@ -14,7 +14,7 @@ Codes/mis mierdas.ipynb
 Codes/examples/tmp24mq6dix
 
 Codes/.idea/*
-/Codes/data/*.npy
+/Codes/data/**/*.npy
 Codes/data/Backup/*.npy
 Codes/data/old/*
 
