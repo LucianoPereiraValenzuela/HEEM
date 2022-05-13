@@ -22,7 +22,7 @@ n_jobs = -1
 time_save = 3  # (min)
 total_time = 3  # (min)
 
-file_name = 'optimal_grouping'
+file_name = 'optimal_grouping_only_paulis'
 name_backend = 'ibmq_montreal'
 backend_parallel = 'multiprocessing'
 # ---------------------------------------------------------
@@ -59,7 +59,7 @@ if n_jobs == -1:
 
 N_test = int(np.ceil(N_test / n_jobs) * n_jobs)
 
-file_name = 'optimal_grouping_' + molecule_name + '_' + name_backend
+file_name += '_' + molecule_name + '_' + name_backend
 
 labels = ['TPB', 'EM', 'HEEM']
 

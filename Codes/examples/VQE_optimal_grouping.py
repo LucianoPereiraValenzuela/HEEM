@@ -25,8 +25,7 @@ with warnings.catch_warnings():
 	from qiskit.providers.aer.noise import NoiseModel
 	from qiskit.utils.quantum_instance import QuantumInstance
 	from qiskit.algorithms import NumPyMinimumEigensolver
-	from qiskit.algorithms.optimizers import SPSA, COBYLA
-	from qiskit.ignis.mitigation.measurement import CompleteMeasFitter
+	from qiskit.algorithms.optimizers import SPSA
 	from qiskit.circuit.library import EfficientSU2
 
 
@@ -36,7 +35,7 @@ def callback(evals, params, mean, deviation):
 	stream.flush()
 
 
-def run_VQE(solver, qubitOp, seed, nmax=100):
+def run_VQE(solver, qubitOp, seed):
 	np.random.seed(seed)
 	solver.compute_minimum_eigenvalue(qubitOp)
 
@@ -49,24 +48,20 @@ os.environ['QISKIT_IN_PARALLEL'] = 'TRUE'
 save = True
 clean_start = True
 
-molecule_name = 'H2O'
+molecule_name = 'LiH'
 n_jobs = -1
-NUM_SHOTS = 2 ** 13
-N_runs = 10
+NUM_SHOTS = 2 ** 14
+N_runs = 12
 maxiter = 300
 
 name_backend = 'ibmq_montreal'
 backend_parallel = 'loky'
 optimizer = SPSA
-
+noise = True
 # ---------------------------------------------------------
-message_help = 'VQE_optimal_grouping.py -m <molecule ({})> -j <#JOBS ({})> -s <# shots ({})> ' \
-               '-N <# runs ({})>, -i <# iterations ({})>, -c <clear start>'.format(molecule_name,
-                                                                                   n_jobs,
-                                                                                   NUM_SHOTS,
-                                                                                   N_runs,
-                                                                                   maxiter,
-                                                                                   clean_start)
+message_help = 'Some error in input: VQE_optimal_grouping.py -m <molecule ({})> -j <#JOBS ({})> -s <# shots ({})> ' \
+               '-N <# runs ({})>, -i <# iterations ({})>, -c <clear start>'.format(molecule_name, n_jobs, NUM_SHOTS,
+                                                                                   N_runs, maxiter, clean_start)
 
 try:
 	argv = sys.argv[1:]
@@ -90,9 +85,12 @@ for opt, arg in opts:
 	elif opt == '-i':
 		maxiter = int(arg)
 	elif opt == '-c':
-		clean_start = bool(arg)
+		clean_start = bool(arg)  # This is wrong
 
-file_name = 'VQE_' + molecule_name + '_' + name_backend
+if noise:
+	file_name = 'VQE_' + molecule_name + '_' + name_backend
+else:
+	file_name = 'VQE_noise_free_' + molecule_name + '_' + name_backend
 
 if n_jobs == -1:
 	n_jobs = os.cpu_count()
@@ -116,18 +114,22 @@ if __name__ == '__main__':
 	noise_model = NoiseModel.from_backend(device)
 	basis_gates = noise_model.basis_gates
 
-	qi = QuantumInstance(backend=backend_sim,
-	                     coupling_map=coupling_map,
-	                     noise_model=noise_model,
-	                     basis_gates=basis_gates,
-	                     shots=NUM_SHOTS)
-	# measurement_error_mitigation_cls=CompleteMeasFitter)
-	# cals_matrix_refresh_period=15)
+	if noise:
+		qi = QuantumInstance(backend=backend_sim, coupling_map=coupling_map, noise_model=noise_model,
+		                     basis_gates=basis_gates, shots=NUM_SHOTS)
+	else:
+		qi = QuantumInstance(backend=backend_sim)
 
 	data_groups = np.load('../data/optimal_grouping_' + molecule_name + '_' + name_backend + '.npy',
 	                      allow_pickle=True).item()
 
-	qubit_op = data_groups['qubit_op']
+	# I fucked up with the water molecule, so I compute the operator again
+	if molecule_name.lower() == 'h20':
+		from utils import molecules
+
+		qubit_op = molecules(molecule_name)
+	else:
+		qubit_op = data_groups['qubit_op']
 
 	result_exact = NumPyMinimumEigensolver().compute_minimum_eigenvalue(qubit_op)
 
@@ -149,31 +151,31 @@ if __name__ == '__main__':
 	if clean_start and save:
 		try:
 			os.remove('../data/' + file_name + '.npy')
+			print('Data removed')
 		except FileNotFoundError:
 			pass
 
 	N_batches = int(N_runs / n_jobs)
 
-	pbar = tqdm(total=N_batches, desc='Computing VQE', file=sys.stdout, ncols=90,
-	            bar_format='{l_bar}{bar}{r_bar}')
+	pbar = tqdm(total=N_batches, desc='Computing VQE', file=sys.stdout, ncols=90, bar_format='{l_bar}{bar}{r_bar}')
 	for i in range(N_batches):
 		initial = i * n_jobs
 		final = min(initial + n_jobs, N_runs)
 
-		solvers_TPB = [VQE(ansatz, optimizer, initial_params, grouping='TPB',
-		                   quantum_instance=qi, callback=callback, Groups=data_groups['TPB']['Groups'],
-		                   Measurements=data_groups['TPB']['Measurements']) for _ in range(final - initial)]
+		solvers_TPB = [VQE(ansatz, optimizer, initial_params, grouping='TPB', quantum_instance=qi, callback=callback,
+		                   Groups=data_groups['TPB']['Groups'], Measurements=data_groups['TPB']['Measurements']) for _
+		               in range(final - initial)]
 
-		solvers_EM = [VQE(ansatz, optimizer, initial_params, grouping='Entangled',
-		                  quantum_instance=qi, callback=callback, Groups=data_groups['EM']['Groups'],
-		                  Measurements=data_groups['EM']['Measurements'], layout=data_groups['EM']['T']) for _ in
-		              range(final - initial)]
+		solvers_EM = [
+			VQE(ansatz, optimizer, initial_params, grouping='Entangled', quantum_instance=qi, callback=callback,
+			    Groups=data_groups['EM']['Groups'], Measurements=data_groups['EM']['Measurements'],
+			    layout=data_groups['EM']['T']) for _ in range(final - initial)]
 
-		solvers_HEEM = [VQE(ansatz, optimizer, initial_params, grouping='Entangled',
-		                    quantum_instance=qi, connectivity=coupling_map, callback=callback,
-		                    Groups=data_groups['HEEM']['Groups'],
-		                    Measurements=data_groups['HEEM']['Measurements'], layout=data_groups['HEEM']['T']) for _ in
-		                range(final - initial)]
+		solvers_HEEM = [
+			VQE(ansatz, optimizer, initial_params, grouping='Entangled', quantum_instance=qi, connectivity=coupling_map,
+			    callback=callback, Groups=data_groups['HEEM']['Groups'],
+			    Measurements=data_groups['HEEM']['Measurements'], layout=data_groups['HEEM']['T']) for _ in
+			range(final - initial)]
 
 		energies_TPB = Parallel(n_jobs=n_jobs, backend=backend_parallel)(
 			delayed(run_VQE)(solver, qubit_op_TPB, None) for solver in solvers_TPB)

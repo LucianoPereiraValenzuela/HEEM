@@ -22,28 +22,29 @@ def groupings(G_device, n):
 
 	pbar = tqdm(range(n), desc='  Grouping', ncols=90, file=sys.stdout)
 	n_groups['naive'] = Parallel(n_jobs=n_jobs, backend=backend_parallel)(
-		delayed(n_groups_shuffle)(paulis, G_device, None, order=False, minimal_output=True) for _ in pbar)
+		delayed(n_groups_shuffle)(paulis, G_device, None, shuffle_qubits=False, order=False, minimal_output=True) for _
+		in pbar)
 	times_grouping['naive'] = time() - start
 
 	start = time()
 	pbar = tqdm(range(n), desc='  Grouping + order', ncols=90)
 	n_groups['order_disconnected'] = Parallel(n_jobs=n_jobs, backend=backend_parallel)(
-		delayed(n_groups_shuffle)(paulis, G_device, None, order=True, connected=False, minimal_output=True) for _ in
-		pbar)
+		delayed(n_groups_shuffle)(paulis, G_device, None, shuffle_qubits=False, order=True, connected=False,
+		                          minimal_output=True) for _ in pbar)
 	times_grouping['order_disconnected'] = time() - start
 
 	start = time()
 	pbar = tqdm(range(n), desc='  Grouping + order + connected ', ncols=90)
 	n_groups['order_connected'] = Parallel(n_jobs=n_jobs, backend=backend_parallel)(
-		delayed(n_groups_shuffle)(paulis, G_device, None, order=True, connected=True, minimal_output=True) for _ in
-		pbar)
+		delayed(n_groups_shuffle)(paulis, G_device, None, shuffle_qubits=False, order=True, connected=True,
+		                          minimal_output=True) for _ in pbar)
 	times_grouping['order_connected'] = time() - start
 
 	return n_groups, times_grouping
 
 
 # ------------  Default parameters calculation  --------------------
-molecule_name = 'LiH'
+molecule_name = 'C2H2'
 n_jobs = -1
 N = 100
 
@@ -53,8 +54,8 @@ name_backend_big = 'ibmq_montreal'
 name_backend_small = 'ibmq_guadalupe'
 
 # ---------------------------------------------------------
-message_help = 'grouping_devices' + '.py -m <molecule ({})> -j <#JOBS ({})>  -N <# shots ({})>'.format(
-	molecule_name, n_jobs, N)
+message_help = 'grouping_devices' + '.py -m <molecule ({})> -j <#JOBS ({})>  -N <# shots ({})>'.format(molecule_name,
+                                                                                                       n_jobs, N)
 
 try:
 	argv = sys.argv[1:]
@@ -80,7 +81,7 @@ if n_jobs == -1:
 
 N = int(np.ceil(N / n_jobs) * n_jobs)
 
-file_name = 'grouping_devices_' + molecule_name
+file_name = 'grouping_devices_only_paulis_' + molecule_name
 
 # Start calculation
 if __name__ == '__main__':
@@ -150,8 +151,7 @@ if __name__ == '__main__':
 		print('-' * 45)
 
 	parameters = {'name_huge': name_backend_huge, 'name_big': name_backend_big, 'name_small': name_backend_small,
-	              'molecule_name': molecule_name,
-	              'n_qubits_molecule': n_qubits}
+	              'molecule_name': molecule_name, 'n_qubits_molecule': n_qubits}
 	times = {'huge': times_huge, 'big': times_big, 'small': times_small}
 	data = {'huge': n_groups_huge, 'big': n_groups_big, 'small': n_groups_small, 'parameters': parameters,
 	        'time': times}
