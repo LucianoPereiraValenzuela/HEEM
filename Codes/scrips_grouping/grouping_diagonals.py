@@ -6,7 +6,8 @@ import numpy as np
 import networkx as nx
 import warnings
 from qiskit import IBMQ
-# import os
+import os
+import getopt
 # from tqdm.auto import tqdm
 # from npy_append_array import NpyAppendArray
 
@@ -15,10 +16,21 @@ from utils import molecules, Label2Chain, get_backend_connectivity, flatten_meas
 from GroupingAlgorithm import groupingWithOrder, TPBgrouping
 # from HEEM_VQE_Functions import probability2expected_parallel
 
-molecule_name = 'CH3OH'
-
 try:
-    os.mkdir(molecule_name)
+    argv = sys.argv[1:]
+    opts, args = getopt.getopt(argv, "hm:j:N:")
+except getopt.GetoptError:
+    print('Wrong argument.')
+    sys.exit(2)
+
+molecule_name = 'H2'
+for opt, arg in opts:
+    if opt == '-m':
+        molecule_name = str(arg)
+
+prefix = '../data/groupings/'
+try:
+    os.mkdir(prefix + molecule_name)
 except FileExistsError:
     pass
 
@@ -55,16 +67,16 @@ def grouping(method):
         Groups, Measurements, layout = groupingWithOrder(paulis, G_device, connected=True, print_progress=True)
 
     groups = flatten_groups(Groups)
-    np.save(molecule_name + '/Groups_' + method + '.npy', np.array(groups, dtype='int32'))
+    np.save(prefix + molecule_name + '/Groups_' + method + '.npy', np.array(groups, dtype='int32'))
     del groups
 
     measure_index, qubits = flatten_measurements(Measurements)
-    np.save(molecule_name + '/Measurements_' + method + '.npy', np.array(measure_index, dtype='int8'))
-    np.save(molecule_name + '/Measurements_qubits_' + method + '.npy', np.array(qubits, dtype='uint8'))
+    np.save(prefix + molecule_name + '/Measurements_' + method + '.npy', np.array(measure_index, dtype='int8'))
+    np.save(prefix + molecule_name + '/Measurements_qubits_' + method + '.npy', np.array(qubits, dtype='uint8'))
     del (measure_index, qubits)
 
     if method != 'TPB':
-        np.save(molecule_name + '/layout_' + method + '.npy', np.array(layout, dtype=object))
+        np.save(prefix + molecule_name + '/layout_' + method + '.npy', np.array(layout, dtype=object))
 
     # n_runs = int(np.ceil(len(Groups) / max_size))
     #
@@ -106,4 +118,4 @@ def grouping(method):
 methods = ['TPB', 'EM', 'HEEM']
 for method in methods:
     print('\n\nComputing ' + method)
-    grouping_plus_diagonals(method)
+    grouping(method)
