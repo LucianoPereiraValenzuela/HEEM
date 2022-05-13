@@ -12,3 +12,10 @@ Codes/Some stuff.nb
 Codes/mis mierdas.ipynb
 *.out
 Codes/examples/tmp24mq6dix
+
+Codes/.idea/*
+/Codes/data/*.npy
+Codes/data/Backup/*.npy
+Codes/data/old/*
+
+Paper
