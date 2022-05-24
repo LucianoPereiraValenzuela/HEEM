@@ -155,7 +155,7 @@ def generate_diagonal_factors_binary(*factors, print_progress=False):
 
     pbar = None
     if print_progress:
-        pbar = tqdm(total=len(factors) - 1, desc='Computing Kronecker product')
+        pbar = tqdm(total=len(factors), desc='Computing Kronecker product')
 
     while len(factors) != 0:  # Run over all the indices, except the first one
         v2 = factors.pop(0)
