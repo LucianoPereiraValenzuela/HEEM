@@ -22,3 +22,5 @@ Paper
 Codes/tests
 
 Codes/examples/progress_*.txt
+
+Codes/examples/*_exact_job_ids.npy
