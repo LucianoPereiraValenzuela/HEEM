@@ -1,18 +1,25 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import os.path
 import copy
 import sys
 from networkx import is_connected
-from datetime import datetime
-import networkx as nx
+from datetime import datetime, timedelta
 from itertools import permutations
 import contextlib
 import joblib
+import webbrowser
+import zipfile
+import time
+import shutil
+import json
+from tqdm.auto import tqdm
 
+from qiskit import transpile, execute
+from qiskit.quantum_info import Pauli
 from qiskit.opflow.primitive_ops import PauliOp
 from qiskit.opflow.list_ops import SummedOp
-from qiskit.quantum_info import Pauli
 from qiskit.opflow.primitive_ops.pauli_sum_op import PauliSumOp
 from qiskit.opflow.primitive_ops.tapered_pauli_sum_op import TaperedPauliSumOp
 from qiskit_nature.circuit.library import HartreeFock
@@ -21,7 +28,8 @@ from qiskit_nature.problems.second_quantization.electronic import ElectronicStru
 from qiskit_nature.mappers.second_quantization import ParityMapper, JordanWignerMapper, BravyiKitaevMapper
 from qiskit_nature.converters.second_quantization.qubit_converter import QubitConverter
 from qiskit_nature.drivers.second_quantization import PySCFDriver
-from qiskit import transpile
+from qiskit.providers.ibmq.job import exceptions
+from qiskit.providers.ibmq.ibmqbackend import IBMQSimulator
 
 from GroupingAlgorithm import groupingWithOrder, TPBgrouping, grouping
 
@@ -1320,3 +1328,172 @@ def load_grouping_data(molecule_name, method):
 
     else:
         return None
+
+
+def download_data_IBMQ(job_id, download_path):
+    """
+    Load data from simulation of experiment from IBMQ. This is to avoid the slow job.result() methods. The data is
+    downloaded using the job is via the browser. If the download fails, it is repeated until successful. The data is
+    download as a .zip file in the download folder.
+
+    Parameters
+    ----------
+    job_id: str
+        IBMQ job id
+    """
+    total_wait = 0
+    max_wait = 120
+    wait = 5
+
+    prefix = 'https://quantum-computing.ibm.com/api/jobs/download?id='
+
+    webbrowser.open(prefix + job_id)
+    while True:
+        if len([name for name in os.listdir(download_path) if job_id in name]) > 0:
+            break
+        else:
+            time.sleep(wait)
+            total_wait += wait
+        if total_wait > max_wait:
+            download_data_IBMQ(job_id, download_path)
+
+
+def load_data_IBMQ(job_id, download_path=None, verbose=False):
+    """
+    Load the data, already downloaded, and extract the probability vector. After this, all the data in the HDD is
+    removed.
+    Parameters
+    ----------
+    job_id: str
+        IBMQ job id
+    """
+
+    if download_path is None:
+        # download_path = '/mnt/d/david/Downloads/'
+        download_path = 'D:/david/Downloads/'
+
+    download_data_IBMQ(job_id, download_path)
+    if verbose:
+        print('data downloaded')
+
+    name_file = download_path + 'job-' + job_id + '.zip'
+
+    with zipfile.ZipFile(name_file, 'r') as zip_ref:
+        zip_ref.extractall(download_path + job_id)
+
+    os.remove(name_file)
+
+    if verbose:
+        print('Loading data...')
+    data = json.load(open(download_path + job_id + '/' + job_id + '-output.json'))['results']
+
+    shutil.rmtree(download_path + job_id)
+
+    return [np.linalg.norm(np.array(data[i]['data']['snapshots']['statevector']['snapshot'][0]), axis=1) ** 2 for i in
+            range(len(data))]
+
+
+def send_job_backend(backend, circuits_batch, index, n_batches, kwards_run, job_tag, verbose=True, output_file=None):
+    # job = backend.run(circuits_batch, **kwards_run)
+    job = execute(circuits_batch, backend, **kwards_run)
+    if job_tag is not None:
+        if type(job_tag) is not list:
+            job_tag = [job_tag]
+
+        job.update_tags(additional_tags=job_tag)
+
+    job.update_name('{}/{}'.format(index + 1, n_batches))
+    if verbose:
+        print('Job {}/{} sent to IBMQ'.format(index + 1, n_batches))
+    if output_file is not None:
+        with open(output_file, 'w') as f:
+            f.write('{}/{}\n'.format(index + 1, n_batches))
+
+    return job
+
+
+def send_ibmq_parallel(backend, batch_size, circuits, job_tag=None, kwards_run=None, verbose=True, output_file=None,
+                       progress_bar=False):
+    def check(running):
+        """
+        Check is some job is done in order to send the next one, or if some job has raised an error.
+        """
+        # print('Checking...')
+        for j, (index, job) in enumerate(running):
+            stop = datetime.now() + timedelta(seconds=5)  # Check status for a maximum of 5''
+            while datetime.now() < stop:
+                if job.done():
+                    return True, j, index
+                elif job.cancelled():
+                    return False, j, index
+                else:
+                    try:
+                        job.error_message()
+                        pass
+                    except exceptions.IBMQError:
+                        return False, j, index
+        return None
+
+    if kwards_run is None:
+        kwards_run = {}
+
+    n_circuits = len(circuits)
+    n_batches = int(np.ceil(n_circuits / batch_size))
+    waiting_time = 5  # seconds between checks
+    n_jobs_parallel = 5  # Maximum number of jobs in parallel
+
+    if progress_bar:
+        pbar = tqdm(total=n_batches, desc='Jobs completed')
+    else:
+        pbar = None
+
+    # Indices for the first and last circuit in each batch
+    indices = []
+    for i in range(n_batches):
+        initial = i * batch_size
+        final = min(initial + batch_size, n_circuits)
+
+        indices.append([initial, final])
+
+    job_done = [None] * n_batches
+    running_jobs = []
+
+    # Send the initial jobs
+    for i, index in enumerate(indices[:n_jobs_parallel]):
+        job = send_job_backend(backend, circuits[index[0]:index[1]], i, n_batches, kwards_run, job_tag, verbose,
+                               output_file)
+
+        running_jobs.append([i, job])
+
+    # Iterate until all jobs have been done
+    while len(running_jobs) > 0:
+        temp = check(running_jobs)
+        # print('Finish checking')
+
+        if temp is not None:  # Some job has been completed or cancelled
+            done, running_id, job_id = temp
+            if done:
+                if progress_bar:
+                    pbar.update()
+                last_job = max([job[0] for job in running_jobs])
+
+                job_done[job_id] = running_jobs.pop(running_id)[1]
+
+                if last_job + 1 < n_batches:
+                    job = send_job_backend(backend, circuits[indices[last_job + 1][0]:indices[last_job + 1][1]],
+                                           last_job + 1, n_batches, kwards_run, job_tag, verbose, output_file)
+
+                    running_jobs.append([last_job + 1, job])
+            else:
+                running_jobs.pop(running_id)
+
+                job = send_job_backend(backend, circuits[indices[job_id][0]:indices[job_id][1]], job_id, n_batches,
+                                       kwards_run, job_tag, verbose, output_file)
+                running_jobs.append([job_id, job])
+        else:
+            time.sleep(waiting_time)
+
+    if progress_bar:
+        pbar.close()
+
+    return job_done
