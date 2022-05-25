@@ -69,7 +69,7 @@ file_name += '_' + grouping
 # Start calculation
 if __name__ == '__main__':
     try:
-        qubit_op = np.load('../data/big_molecules.npy', allow_pickle=True).item()[molecule_name]
+        qubit_op = np.load('../data/old/big_molecules.npy', allow_pickle=True).item()[molecule_name]
         print('Data loaded')
     except KeyError:
         qubit_op = molecules(molecule_name)

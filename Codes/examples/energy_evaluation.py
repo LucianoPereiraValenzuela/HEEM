@@ -166,7 +166,7 @@ if __name__ == '__main__':
 
     print('Comparing energy for', molecule_name)
     try:
-        qubit_op = np.load('../data/big_molecules.npy', allow_pickle=True).item()[molecule_name]
+        qubit_op = np.load('../data/old/big_molecules.npy', allow_pickle=True).item()[molecule_name]
         print('Data loaded')
     except KeyError:
         qubit_op = molecules(molecule_name)
