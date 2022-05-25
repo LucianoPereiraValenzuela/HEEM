@@ -28,8 +28,8 @@ from qiskit_nature.problems.second_quantization.electronic import ElectronicStru
 from qiskit_nature.mappers.second_quantization import ParityMapper, JordanWignerMapper, BravyiKitaevMapper
 from qiskit_nature.converters.second_quantization.qubit_converter import QubitConverter
 from qiskit_nature.drivers.second_quantization import PySCFDriver
+from qiskit.providers import JobStatus
 from qiskit.providers.ibmq.job import exceptions
-from qiskit.providers.ibmq.ibmqbackend import IBMQSimulator
 
 from GroupingAlgorithm import groupingWithOrder, TPBgrouping, grouping
 
@@ -733,8 +733,16 @@ def C2H2(distance=None, freeze_core=True, remove_orbitals=None, initial_state=Fa
 
 
 def molecules(molecule_name, distance=None, freeze_core=True, remove_orbitals=None, operator=True, initial_state=False,
-              mapper_type='ParityMapper'):
+              mapper_type='ParityMapper', load=True):
     molecule_name = molecule_name.lower()
+
+    if load:
+        try:
+            qubit_op = np.load('data/molecules_qubitop.npy', allow_pickle=True).item()[molecule_name]
+            print('Data loaded')
+            return qubit_op
+        except KeyError:
+            print('Computing molecule')
 
     if molecule_name == 'h2':
         return H2(distance=distance, freeze_core=freeze_core, remove_orbitals=remove_orbitals,
@@ -1394,7 +1402,9 @@ def load_data_IBMQ(job_id, download_path=None, verbose=False):
 
 
 def send_job_backend(backend, circuits_batch, index, n_batches, kwards_run, job_tag, verbose=True, output_file=None):
-    # job = backend.run(circuits_batch, **kwards_run)
+    if verbose:
+        print('Sending Job {}/{} to IBMQ'.format(index + 1, n_batches))
+
     job = execute(circuits_batch, backend, **kwards_run)
     if job_tag is not None:
         if type(job_tag) is not list:
@@ -1412,34 +1422,41 @@ def send_job_backend(backend, circuits_batch, index, n_batches, kwards_run, job_
     return job
 
 
+def check_status_jobs(running, n_batches, verbose=False):
+    """
+    Check is some job is done in order to send the next one, or if some job has raised an error.
+    """
+    # print('Checking...')
+    for j, (index, job) in enumerate(running):
+        # stop = datetime.now() + timedelta(seconds=5)  # Check status for a maximum of 5"
+        if verbose:
+            print(f'Checking job {index + 1}/{n_batches}')
+
+        status = job.status()
+        # while datetime.now() < stop:
+        if status == JobStatus.DONE:
+            if verbose:
+                print(f'Job {index + 1}/{n_batches} done')
+            return True, j, index
+        elif status == JobStatus.CANCELLED:
+            if verbose:
+                print(f'Job {index + 1}/{n_batches} canceled')
+            return False, j, index
+        elif status == JobStatus.ERROR:
+            if verbose:
+                print(f'Job {index + 1}/{n_batches} failed')
+            return False, j, index
+    return None
+
+
 def send_ibmq_parallel(backend, batch_size, circuits, job_tag=None, kwards_run=None, verbose=True, output_file=None,
                        progress_bar=False):
-    def check(running):
-        """
-        Check is some job is done in order to send the next one, or if some job has raised an error.
-        """
-        # print('Checking...')
-        for j, (index, job) in enumerate(running):
-            stop = datetime.now() + timedelta(seconds=5)  # Check status for a maximum of 5''
-            while datetime.now() < stop:
-                if job.done():
-                    return True, j, index
-                elif job.cancelled():
-                    return False, j, index
-                else:
-                    try:
-                        job.error_message()
-                        pass
-                    except exceptions.IBMQError:
-                        return False, j, index
-        return None
-
     if kwards_run is None:
         kwards_run = {}
 
     n_circuits = len(circuits)
     n_batches = int(np.ceil(n_circuits / batch_size))
-    waiting_time = 5  # seconds between checks
+    waiting_time = 20  # seconds between checks
     n_jobs_parallel = 5  # Maximum number of jobs in parallel
 
     if progress_bar:
@@ -1465,25 +1482,28 @@ def send_ibmq_parallel(backend, batch_size, circuits, job_tag=None, kwards_run=N
 
         running_jobs.append([i, job])
 
+    max_id_sent = n_jobs_parallel - 1
+
     # Iterate until all jobs have been done
     while len(running_jobs) > 0:
-        temp = check(running_jobs)
-        # print('Finish checking')
+        temp = check_status_jobs(running_jobs, n_batches, verbose=verbose)
+        if verbose:
+            print('Finish checking')
 
         if temp is not None:  # Some job has been completed or cancelled
             done, running_id, job_id = temp
             if done:
                 if progress_bar:
                     pbar.update()
-                last_job = max([job[0] for job in running_jobs])
 
                 job_done[job_id] = running_jobs.pop(running_id)[1]
 
-                if last_job + 1 < n_batches:
-                    job = send_job_backend(backend, circuits[indices[last_job + 1][0]:indices[last_job + 1][1]],
-                                           last_job + 1, n_batches, kwards_run, job_tag, verbose, output_file)
+                if max_id_sent + 1 < n_batches:
+                    max_id_sent += 1
+                    job = send_job_backend(backend, circuits[indices[max_id_sent][0]:indices[max_id_sent][1]],
+                                           max_id_sent, n_batches, kwards_run, job_tag, verbose, output_file)
 
-                    running_jobs.append([last_job + 1, job])
+                    running_jobs.append([max_id_sent, job])
             else:
                 running_jobs.pop(running_id)
 
