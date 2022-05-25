@@ -82,6 +82,62 @@ def post_process_results(result, n_q, NUM_SHOTS):
     return probabilities
 
 
+def post_process_results_2(result, n_q):
+    """
+    Transform the counts obtained when running the backend with multiple classical register into an array of
+    probabilities.
+
+    Parameters
+    ----------
+    result: dict('str': int)
+        Dictionary in which the keys are the results of a given experiment, with each classical register separated by a
+        space. In the values of the dictionaries are saved the number of times a given result is obtained.
+    n_q: int
+        Number of measured qubits. This values does not have to coincide with the total number of qubits in the circuit.
+
+    Return
+    ------
+    probabilities: (2 ** n_q) array(float)
+        Probabilities for each result, where each index correspond to the given result in decimal.
+    """
+
+    # Initialize list for the results and the counts
+    labels = []
+    counts = []
+    for key in result.keys():
+        labels.append(key.replace(' ', ''))  # Join all the classical register in one single string with no spaces
+        counts.append(result[key])
+
+    # Initialize the array of probabilities with all the results in 0
+    probabilities = np.zeros(2 ** n_q, dtype='H')
+    for j in range(len(labels)):
+        # Transform the result from binary to decimal, and save the probability
+        probabilities[int(labels[j], 2)] += counts[j]
+
+    return probabilities
+
+
+def post_process_results_3(result):
+    """
+    The results are saved in a sparse vector, saving in separate arrays the indices for non-zero probabilities, and the
+    number of counts in these cases.
+    """
+
+    # Initialize list for the results and the counts
+    labels = []
+    counts = []
+    for key in result.keys():
+        labels.append(key.replace(' ', ''))  # Join all the classical register in one single string with no spaces
+        counts.append(result[key])
+
+    counts_indices = np.zeros(len(labels), dtype='I')
+
+    for j in range(len(labels)):
+        counts_indices[j] = int(labels[j], 2)
+
+    return counts_indices, np.array(counts, dtype='H')
+
+
 def generate_diagonal_factors(*factors, print_progress=False):
     """
     Generate the diagonal part of the tensor product of matrices that represent the basis in which each qubit (or a pair
@@ -419,7 +475,11 @@ def probability2expected_binary(Pauli_weights, Pauli_labels, Groups, Measurement
 
     pbar = None
     if print_progress:
-        pbar = tqdm(total=len(Groups), desc='Computing diagonal factors')
+        total = 0
+        for group in Groups:
+            total += len(group)
+
+        pbar = tqdm(total=total, desc='Computing diagonal factors')
 
     for measurements, group in zip(Measurements, Groups):  # Iterate over all the measurements
         # Pauli weights and string in each measurement
@@ -465,8 +525,8 @@ def probability2expected_binary(Pauli_weights, Pauli_labels, Groups, Measurement
             diagonal_factors_temp.append(
                 diagonal_factors)  # diagonal_factors_temp.append(diagonal_factors * pauli_weights[i])
 
-        if print_progress:
-            pbar.update()
+            if print_progress:
+                pbar.update()
 
         diagonal_factors_all.append(np.array(diagonal_factors_temp,
                                              dtype='bool'))  # diagonal_factors_all.append(np.array(diagonal_factors_temp))
