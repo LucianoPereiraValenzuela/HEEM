@@ -734,16 +734,15 @@ def C2H2(distance=None, freeze_core=True, remove_orbitals=None, initial_state=Fa
 
 def molecules(molecule_name, distance=None, freeze_core=True, remove_orbitals=None, operator=True, initial_state=False,
               mapper_type='ParityMapper', load=True):
-    molecule_name = molecule_name.lower()
-
     if load:
         try:
-            qubit_op = np.load('data/molecules_qubitop.npy', allow_pickle=True).item()[molecule_name]
-            print('Data loaded')
+            qubit_op = np.load('../data/molecules_qubitop.npy', allow_pickle=True).item()[molecule_name]
+            print('Molecule loaded')
             return qubit_op
         except KeyError:
             print('Computing molecule')
 
+    molecule_name = molecule_name.lower()
     if molecule_name == 'h2':
         return H2(distance=distance, freeze_core=freeze_core, remove_orbitals=remove_orbitals,
                   initial_state=initial_state, operator=operator, mapper_type=mapper_type)
@@ -1217,18 +1216,17 @@ def current_time():
 def tqdm_joblib(tqdm_object):
     """Context manager to patch joblib to report into tqdm progress bar given as argument"""
 
-    def tqdm_print_progress(self):
-        if self.n_completed_tasks > tqdm_object.n:
-            n_completed = self.n_completed_tasks - tqdm_object.n
-            tqdm_object.update(n=n_completed)
+    class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
+        def __call__(self, *args, **kwargs):
+            tqdm_object.update(n=self.batch_size)
+            return super().__call__(*args, **kwargs)
 
-    original_print_progress = joblib.parallel.Parallel.print_progress
-    joblib.parallel.Parallel.print_progress = tqdm_print_progress
-
+    old_batch_callback = joblib.parallel.BatchCompletionCallBack
+    joblib.parallel.BatchCompletionCallBack = TqdmBatchCompletionCallback
     try:
         yield tqdm_object
     finally:
-        joblib.parallel.Parallel.print_progress = original_print_progress
+        joblib.parallel.BatchCompletionCallBack = old_batch_callback
         tqdm_object.close()
 
 
@@ -1312,8 +1310,7 @@ def load_grouping_data(molecule_name, method):
 
     try:
         np.load(file + 'Measurements_qubits_' + method + '.npy')
-        data_computed = True
-        print('Data loaded')
+        data_computed = True  # print('Data loaded')
     except FileNotFoundError:
         print('Data does not exist.')
         data_computed = False
@@ -1321,10 +1318,10 @@ def load_grouping_data(molecule_name, method):
     if data_computed:
         Groups = recover_groups(np.load(file + 'Groups_' + method + '.npy'))
 
-        Mesurements = recover_measurements(np.load(file + 'Measurements_' + method + '.npy'),
-                                           np.load(file + 'Measurements_qubits_' + method + '.npy').tolist())
+        Measurements = recover_measurements(np.load(file + 'Measurements_' + method + '.npy'),
+                                            np.load(file + 'Measurements_qubits_' + method + '.npy').tolist())
 
-        returns = [Groups, Mesurements]
+        returns = [Groups, Measurements]
 
         try:
             layout = np.load(file + 'layout_' + method + '.npy', allow_pickle=True).tolist()
@@ -1450,14 +1447,15 @@ def check_status_jobs(running, n_batches, verbose=False):
 
 
 def send_ibmq_parallel(backend, batch_size, circuits, job_tag=None, kwards_run=None, verbose=True, output_file=None,
-                       progress_bar=False):
+                       progress_bar=False, n_jobs_parallel=5, waiting_time = 20):
     if kwards_run is None:
         kwards_run = {}
 
     n_circuits = len(circuits)
     n_batches = int(np.ceil(n_circuits / batch_size))
-    waiting_time = 20  # seconds between checks
-    n_jobs_parallel = 5  # Maximum number of jobs in parallel
+
+    if n_jobs_parallel == -1:
+        n_jobs_parallel = n_batches
 
     if progress_bar:
         pbar = tqdm(total=n_batches, desc='Jobs completed')
