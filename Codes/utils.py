@@ -733,7 +733,7 @@ def C2H2(distance=None, freeze_core=True, remove_orbitals=None, initial_state=Fa
 
 
 def molecules(molecule_name, distance=None, freeze_core=True, remove_orbitals=None, operator=True, initial_state=False,
-              mapper_type='ParityMapper', load=True):
+              mapper_type='ParityMapper', load=False):
     if load:
         try:
             qubit_op = np.load('../data/molecules_qubitop.npy', allow_pickle=True).item()[molecule_name]

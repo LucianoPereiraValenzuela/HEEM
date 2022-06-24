@@ -22,6 +22,7 @@ from qiskit.algorithms.variational_algorithm import VariationalResult
 from qiskit.algorithms.minimum_eigen_solvers.minimum_eigen_solver import MinimumEigensolver, MinimumEigensolverResult
 from qiskit.algorithms.exceptions import AlgorithmError
 import networkx as nx
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +38,10 @@ class VQE(MinimumEigensolver):
                  connectivity: Optional[list] = None,
                  callback: Optional[Callable[[int, np.ndarray, float, None], None]] = None,
                  quantum_instance: Optional[Union[QuantumInstance, BaseBackend, Backend]] = AerSimulator(
-                     method='statevector'), Measurements: Optional[list] = None, layout: Optional[Union[list]] = None,
-                 Groups: Optional[Union[list[list[int]]]] = None) -> None:
+                    method='statevector'),
+                    Measurements: Optional[list] = None, 
+                    layout: Optional[Union[list]] = None, 
+                    Groups: Optional[Union[List[List[int]]]] = None) -> None:
         """
         Parameters
         ----------
