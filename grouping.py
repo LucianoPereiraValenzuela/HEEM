@@ -4,9 +4,6 @@ from itertools import permutations
 import copy
 from tqdm.auto import tqdm
 
-# TODO: All required functions for grouping with and without entanglement. Also, a class with some of the most used
-#  methods and attributes
-
 """
 In order to simplify the programming, we use a numerical encoding to identify each Pauli string with an integer
 I-> 0, X-> 1, Y-> 2, Z-> 3
@@ -533,8 +530,8 @@ def measurement_assignment_with_order(Vi, Vj, Mi, AM, WC, OQ, T):
                     else:
                         Tper = 0
                     if (Tper in WC) or (LENGTH_MEAS[Eps] == 1):  # Connectivity check
-                        if (list(Vi[tuple([per])]) in COMP_LIST[Eps]) and (
-                                list(Vj[tuple([per])]) in COMP_LIST[Eps]):  # Compatibility check
+                        # Compatibility check
+                        if (list(Vi[tuple([per])]) in COMP_LIST[Eps]) and (list(Vj[tuple([per])]) in COMP_LIST[Eps]):
                             UMi.append([Eps, list(per)])
                             for k in per:
                                 U.remove(k)
@@ -653,73 +650,38 @@ def groupingWithOrder(PS, G=None, connected=False, print_progress=False):
     return Groups, Measurements, T
 
 
-def color_groups(colordict):
-    """
-    Construction of the TPB groups from the color dictionary.
-
-    Parameters
-    ----------
-    colordict: dict
-        The keys are the indexes of the Pauli strings. The values are the colors assigned to the Pauli string.
-        The rule is that two Pauli strings have a different color if their nodes in the Pauli graph are connected.
-
-    Return
-    ------
-    groups: list
-        The element in the position i is a list with the indexes of strings assigned to color i, i.e, the group of
-        strings with color i.
-    """
-    # TODO: This can be done without color_array
-    color_array = np.array(list(colordict.items()))
-    keys = np.array(color_array[:, 0])
-    values = np.array(color_array[:, 1])
-
-    groups = [list(keys[np.nonzero(values == i)]) for i in range(max(values) + 1)]
-    return groups
-
-
-def tpb_grouping(PS, print_progress=False):
+def tpb_grouping(labels, print_progress=False):
     """
     Construction of the TPB groups, i.e., the groups when considering the TPB basis.
 
     Parameters
     ----------
-    PS: ndarray (n, N)
-        Pauli strings, each row represents a Pauli string, each column represents a qubit.
-        Thus, n is the number of Pauli strings and N is the number of qubits.
+    labels: ndarray (n, N)
+        A total of n Pauli strings for N qubits. The Pauli labels are in the number convention.
     print_progress: bool (optional, default=False)
         If True, print the progress bar for the Pauli graph building.
 
     Returns
     -------
-    color: dict
-        The value assigned to the key i is the color assigned to the string i
-    groups: list
-        The element in the position i is a list with the indexes of strings assigned to color i, i.e, the group of
-        strings with color i.
-    measurement: list
-        The element in position i is a list which represents measurement assigned to the group i. Each of these list is
-        a list of partial measurements. Each partial measurements is a list of two elements. The first of these elements
-        encodes the partial measurement assigned and the second the qubits where it should be performed.
+    groups: list[list]
+        Indices of the grouped Pauli labels
+    measurements: list[list[list]]
+        Measurements for each group of Pauli labels. Each grouped measurements is constituted with multiple one qubit
+        and two qubit partial measurements. The first index denotes the partial measurement to perform, and the
+        second one the qubits to measure.
     """
-    N = np.size(PS[0, :])
+    PG = pauli_graph(labels, print_progress=print_progress)
+    coloring = nx.coloring.greedy_color(PG)  # Graph coloring code of networkx. By default, it uses LDFC strategy.
 
-    PG = pauli_graph(PS, print_progress=print_progress)
-    color = nx.coloring.greedy_color(PG)  # Graph coloring code of networkx. By default, it uses LDFC strategy.
-
-    # TODO: This can be done without color_array
-    color_array = np.array(list(color.items()))
-    keys = np.array(color_array[:, 0])
-    values = np.array(color_array[:, 1])
-
-    groups = [list(keys[np.nonzero(values == i)]) for i in range(max(values) + 1)]
+    # Obtain grouped Pauli labels
+    groups = [[k for k, v in coloring.items() if v == color] for color in set(coloring.values())]
 
     # TPB measurements assignment
     measurements = []
-    for group in range(len(groups)):
+    for group in groups:
         Mi = []
-        for k in range(N):
-            Mi.append([max(PS[group, k]), [k]])
+        for k in range(labels.shape[1]):  # Iterate over the qubits
+            Mi.append([max(labels[group, k]), [k]])
         measurements.append(Mi)
 
-    return color, groups, measurements
+    return groups, measurements
