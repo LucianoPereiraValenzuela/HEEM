@@ -4,8 +4,6 @@ from itertools import permutations
 import copy
 from tqdm.auto import tqdm
 
-# TODO: Introduce function to check that all measurements are measured one time, and only one time.
-
 """
 In order to simplify the programming, we use a numerical encoding to identify each Pauli string with an integer
 I-> 0, X-> 1, Y-> 2, Z-> 3
@@ -32,7 +30,7 @@ COMP_LIST = [[[]], [[0], [1]], [[0], [2]], [[0], [3]],  # One qubit measurements
 LENGTH_MEAS = [len(x[0]) for x in COMP_LIST]
 
 
-def pauli_graph(PS, print_progress=False):
+def build_pauli_graph(PS, print_progress=False):
     """
     Construction of the Pauli Graph.
 
@@ -60,7 +58,7 @@ def pauli_graph(PS, print_progress=False):
     PG = nx.Graph()
     PG.add_nodes_from(np.arange(n))
 
-    pbar = tqdm(range(n), desc='Computing Pauli graph', disable=not print_progress)
+    pbar = tqdm(range(n), desc='Pauli graph', disable=not print_progress)
     for i in pbar:  # Loop over each Pauli string v_i
         v_i = PS[i, :]
         for j in range(i + 1, n):  # Nested loop over the following Pauli strings v_j
@@ -141,65 +139,31 @@ def compatible_measurements_2q(measurement, F):
     return n_compatibilities
 
 
-# TODO: Compatibilities can be merged to use the same code?
-def compatibilities(PS):
+def compatible_measurements(labels, T=None, connectivity_graph=None, one_qubit=True, two_qubit=True):
     """
-    Given a set of 'n' Pauli Strings (PS) with 'N' qubits, returns three arrays regarding the compatibilities of the
-    measurements. The element (i, j) of the compatibility matrix contains the number of times that the qubits i and j
-    of one string are jointly measurable (compatible) with the qubits i and j of other string. For example, the pauli
-    strings [1, 1] and [2, 2] will produce C[0, 1] = 1 because the qubits 0 and 1 of those pauli strings are jointly
-    measurable only with the bell measurement. This matrix is symmetric, and the diagonal factors set to -1.
+    Given a set of 'n' Pauli Strings with 'N' qubits, returns three arrays regarding the compatibilities of the
+    measurements. C is the number of two_qubit measurements for each pair of qubits. CM is the number of times a given
+    measurement can be applied. Finally, CQ is the number of times a given qubit must be measured.
 
     Parameters
     ----------
-    PS: ndarray (n, N)
-        Pauli strings, each row represents a Pauli string and each column represents a qubit.
-
-    Returns
-    -------
-    C:  ndarray (n, N)
-        Compatibility matrix¡.
-    """
-
-    n, N = np.shape(PS)  # Number of Pauli labels and number of qubits
-
-    C = np.diag(-1 * np.ones(N, dtype=int))
-
-    for i in range(N):  # First qubit
-        for j in range(i + 1, N):  # Second qubit
-            PSij = PS[:, [i, j]]
-
-            F = empty_factors()
-            for label in PSij:  # Generate factors list
-                F[str(label[0]) + str(label[1])] += 1
-
-            for measurement in range(4, 10):  # Fill compatibility measurements between qubits i and j
-                n_counts = compatible_measurements_2q(measurement, F)
-
-                C[i, j] += n_counts
-                C[j, i] += n_counts
-
-    return C
-
-
-def transpiled_compatibilities(PS, T, G):
-    """
-    Given a set of 'n' Pauli Strings (PS) with 'N' qubits, returns three arrays regarding the compatibilities of the
-    measurements.
-
-    Parameters
-    ----------
-    PS: ndarray (n, N)
+    labels: ndarray (n, N)
         Pauli strings, each row represents a Pauli string and each column represents a qubit.
     T: list
         Map from theoretical qubits to physical qubits. If T[i] = j it means that the i-th theoretical qubit is
         mapped to the j-th physical qubit.
-    G: nx.Graph
+    connectivity_graph: nx.Graph
         Connectivity graph of the chip. Its vertices represent physical qubits and its edges physical connections
         between them.
+    one_qubit: bool (optional, default=True)
+        Measure compatible 1 qubit measurements for each qubit. The data is saved in CQ
+    two_qubit: bool (optional, default=True)
+        Measure compatible 2 qubit measurements for each measure. The data is saved in CM.
 
     Returns
     -------
+    C:  ndarray (n, N)
+        Compatibility matrix
     CM: list
         Number of times that qubits of two pauli strings are compatible with each measurement, given that T have been
         chosen as the map from theoretical qubits to physical qubits.
@@ -208,38 +172,45 @@ def transpiled_compatibilities(PS, T, G):
         other qubit though any measurement, given that T have been chosen as the map from theoretical qubits to physical
         qubits. It is the sum of the i_th row/column of the matrix C, excluding the -1 of the diagonal, the number of
         compatibilities due to one-qubit measurements.
+
     """
 
-    n, N = np.shape(PS)
+    n, N = np.shape(labels)
 
     C = np.diag(-1 * np.ones(N, dtype=int))
     CM = [0] * 10
     CQ = [0] * N
 
+    if T is None:
+        T = list(range(N))
+        connectivity_graph = nx.Graph()
+        connectivity_graph.add_edges_from(list(permutations(list(range(N)), 2)))
+
     for i in range(N):  # First qubit
-        for j in range(i + 1, N):  # Second qubit
-            if [T[i], T[j]] in G.edges():  # Connected qubits
-                PSij = PS[:, [i, j]]
+        if two_qubit:
+            for j in range(i + 1, N):  # Second qubit
+                if [T[i], T[j]] in connectivity_graph.edges():  # Connected qubits
+                    PSij = labels[:, [i, j]]
 
-                F = empty_factors()
-                for s in range(n):  # Generate factors list
-                    label = str(PSij[s, 0]) + str(PSij[s, 1])
-                    F[label] += 1
+                    F = empty_factors()
+                    for label in PSij:  # Generate factors list
+                        F[str(label[0]) + str(label[1])] += 1
 
-                for measurement in range(4, 10):  # Fill compatibility measurements between qubits i and j
-                    n_counts = compatible_measurements_2q(measurement, F)
+                    for measurement in range(4, 10):  # Fill compatibility measurements between qubits i and j
+                        n_counts = compatible_measurements_2q(measurement, F)
 
-                    C[i, j] += n_counts
-                    C[j, i] += n_counts
-                    CM[measurement] += n_counts
+                        C[i, j] += n_counts
+                        C[j, i] += n_counts
+                        CM[measurement] += n_counts
 
-        CQ[i] = 1 + np.sum(C[i, :])
-        for measurement in range(1, 4):
-            n_counts = compatible_measurements_1q(measurement, PS[:, i])
-            CQ[i] += n_counts
-            CM[measurement] += n_counts
-    # TODO: It is possible that single-qubit measurements are prioritized over double-qubit ones?
-    return CM, CQ
+        if one_qubit:
+            CQ[i] = 1 + np.sum(C[i, :])
+            for measurement in range(1, 4):
+                n_counts = compatible_measurements_1q(measurement, labels[:, i])
+                CQ[i] += n_counts
+                CM[measurement] += n_counts
+
+    return C, CM, CQ
 
 
 # TODO: Documentation of transpile and revisit functions
@@ -526,18 +497,18 @@ def measurement_assignment(Vi, Vj, Mi, AM, WC, OQ, T):
     return UMi, True
 
 
-def grouping_entangled(PS, G=None, connected=False, print_progress=False):
+def grouping_entangled(labels, connectivity=None, connected_graph=False, print_progress=False, pauli_graph=None):
     """
     Given a set of Pauli strings, groups them using entangled measurements. The chip connectivity can be taken into
     account to avoid two-qubit measurements between non-connected qubits.
 
     Parameters
     ----------
-    PS: ndarray (n, N)
+    labels: ndarray (n, N)
         A total of n Pauli strings for N qubits. The Pauli labels are in the number convention.
-    G: nx.Graph (optional, default=None)
+    connectivity: nx.Graph (optional, default=None)
         Graph that represents the connectivity of the chip. If not provided, an all-to-all device is assumed.
-    connected: bool (optional, default=False)
+    connected_graph: bool (optional, default=False)
         If True the transpile algorithm ensures that the subgraph of the theoretical qubits in the chip is connected.
         Else, the algorithm does not ensure that the subgraph of the theoretical qubits in the chip is connected,
         instead tries to optimize omega(T) in a greedy way.
@@ -559,11 +530,11 @@ def grouping_entangled(PS, G=None, connected=False, print_progress=False):
     correspondent physical indexes, i.e., if we have the i-theoretical qubit is mapped to the j-physical qubit through
     T, in other words T[i]=j, we use the index i and not the j to refer to that qubit.
     """
-    n, N = np.shape(PS)
+    n, N = np.shape(labels)
 
-    if G is None:
-        G = nx.Graph()
-        G.add_edges_from(list(permutations(list(range(N)), 2)))
+    if connectivity is None:
+        connectivity = nx.Graph()
+        connectivity.add_edges_from(list(permutations(list(range(N)), 2)))
 
     # if type(G) == nx.classes.graph.Graph:
     #     pass
@@ -572,22 +543,23 @@ def grouping_entangled(PS, G=None, connected=False, print_progress=False):
     #     G = nx.Graph()
     #     G.add_edges_from(temp)
 
-    if len(G.nodes) < len(PS[0]):
+    if len(connectivity.nodes) < len(labels[0]):
         raise Exception('The number of qubits in the device is not high enough. Use a bigger device.')
 
     # TODO: When the class is implemented, extract the Pauli graph out of the grouping functions
-    PG = pauli_graph(PS, print_progress=print_progress)
+    if pauli_graph is None:
+        pauli_graph = build_pauli_graph(labels, print_progress=print_progress)
 
     # Qubits in descending order of compatible measurements
-    SV = sorted(PG.degree, key=lambda x: x[1], reverse=True)
+    SV = sorted(pauli_graph.degree, key=lambda x: x[1], reverse=True)
     SV = [x[0] for x in SV]
 
-    WC = list(G.edges)  # list of pairs of well-connected qubits
+    WC = list(connectivity.edges)  # list of pairs of well-connected qubits
     AS = []  # List of Pauli labels with assigned measurement
 
-    C = compatibilities(PS)
-    T = transpile(G, C, connected)
-    CM, CQ = transpiled_compatibilities(PS, T, G)
+    C, _, _ = compatible_measurements(labels, one_qubit=False)
+    T = transpile(connectivity, C, connected_graph)
+    _, CM, CQ = compatible_measurements(labels, T=T, connectivity_graph=connectivity)
 
     AM = list(np.argsort(CM[1:])[::-1] + 1)
     OQ = list(np.argsort(CQ)[::-1])
@@ -595,7 +567,7 @@ def grouping_entangled(PS, G=None, connected=False, print_progress=False):
     groups = []
     measurements = []
 
-    pbar = tqdm(range(n), desc='Computing grouping', disable=not print_progress)
+    pbar = tqdm(range(n), desc='Grouping entangled', disable=not print_progress)
     for k in pbar:
         i = SV[k]  # We run the Pauli strings in a decreasing order of CQ.
         if i not in AS:  # If we enter to this loop, the i string will have its own group.
@@ -606,7 +578,7 @@ def grouping_entangled(PS, G=None, connected=False, print_progress=False):
                 j = SV[m]
                 # TODO: This can be improved so the same Pauli label is not taken twice
                 if j not in AS:
-                    Mi, S = measurement_assignment(PS[i], PS[j], Mi, AM, WC, OQ, T)
+                    Mi, S = measurement_assignment(labels[i], labels[j], Mi, AM, WC, OQ, T)
                     if S:
                         AS.append(j)
                         GroupMi.append(j)
@@ -617,7 +589,7 @@ def grouping_entangled(PS, G=None, connected=False, print_progress=False):
                     QWM.remove(s)
 
             for q in QWM:
-                TPBq = max(PS[GroupMi, q])
+                TPBq = max(labels[GroupMi, q])
                 Mi.append([TPBq, [q]])
 
             groups.append(GroupMi)
@@ -646,7 +618,7 @@ def grouping_TPB(labels, print_progress=False):
         and two qubit partial measurements. The first index denotes the partial measurement to perform, and the
         second one the qubits to measure.
     """
-    PG = pauli_graph(labels, print_progress=print_progress)
+    PG = build_pauli_graph(labels, print_progress=print_progress)
     coloring = nx.coloring.greedy_color(PG)  # Graph coloring code of networkx. By default, it uses LDFC strategy.
 
     # Obtain grouped Pauli labels
@@ -661,3 +633,71 @@ def grouping_TPB(labels, print_progress=False):
         measurements.append(Mi)
 
     return groups, measurements
+
+
+def test_grouping_paulis(labels, groups):
+    """
+    Check that all Pauli labels are measured one, and only one time.
+
+    Parameters
+    ----------
+    labels: ndarray (n, N)
+        A total of n Pauli strings for N qubits. The Pauli labels are in the number convention.
+    groups: list[list]
+        Indices of the grouped Pauli labels
+
+    Returns
+    -------
+    If the test passes, True is returned. Otherwise, and exception is raised.
+    """
+
+    n_labels = len(labels)
+
+    pauli_indices = list(range(n_labels))
+    try:
+        for group in groups:
+            for index in group:
+                pauli_indices.remove(index)  # Remove index of measured Pauli label
+    except ValueError:  # If try to remove twice the same index
+        raise Exception('The Pauli label ({}) is measured at least two times.'.format(labels[index]))
+
+    # If some index has not been removed
+    if len(pauli_indices) > 0:
+        raise Exception('The following Pauli indices are not measured {}'.format(pauli_indices))
+
+    return True
+
+
+def test_grouping_measurements(labels, groups, measurements):
+    """
+    Check that all the measurements correctly corresponds to the grouping labels, and no error has occurred during the
+    grouping algorithm.
+
+    Parameters
+    ----------
+    labels: ndarray (n, N)
+        A total of n Pauli strings for N qubits. The Pauli labels are in the number convention.
+    groups: list[list]
+        Indices of the grouped Pauli labels
+    measurements: list[list[list]]
+        Measurements for each group of Pauli labels. Each grouped measurements is constituted with multiple one qubit
+        and two qubit partial measurements. The first index denotes the partial measurement to perform, and the
+        second one the qubits to measure.
+
+    Returns
+    -------
+    If the test passes, True is returned. Otherwise, and exception is raised.
+    """
+    for group, measurement in zip(groups, measurements):  # Iterate over the groups
+        grouped_labels = labels[group]
+        for partial_measurement in measurement:  # Iterate over the partial measurements
+            index_measure, qubits = partial_measurement
+            for grouped_label in grouped_labels:  # Check each grouped Pauli label
+                if list(grouped_label[qubits]) == [0] * len(qubits):  # If the identity is applied, continue
+                    continue
+                # If the Pauli not compatible with measurement
+                elif list(grouped_label[qubits]) not in COMP_LIST[index_measure]:
+                    raise Exception(
+                        'The Pauli label {} is incompatible with the measurement {} over the qubit(s) {}'.format(
+                            grouped_label, index_measure, *qubits))
+    return True
