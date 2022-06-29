@@ -294,48 +294,6 @@ def transpile_connected(connectivity_graph, C):
     return T
 
 
-def transpile_disconnected_2(connectivity_graph, C):
-    """
-    Construct a theoretical-physical map for the qubits. For details on the arguments and the return, check the documentation of the transpile function.
-    """
-    C = copy.copy(C)
-    connectivity_graph = copy.deepcopy(connectivity_graph)
-
-    N = len(C)
-    AQ = []
-    T = [None] * N
-
-    while len(AQ) < N:
-        i, j = np.unravel_index(np.argmax(C), [N, N])
-
-        if (i in AQ) and (j in AQ):
-            C[i, j] = -1
-            C[j, i] = -1
-        elif (i not in AQ) and (j not in AQ):
-            ii, jj = list(connectivity_graph.edges())[0]
-
-            C[i, j] = -1
-            C[j, i] = -1
-
-            if (ii not in T) and (jj not in T):
-                T[i] = ii
-                T[j] = jj
-                AQ.append(i)
-                AQ.append(j)
-
-                for node in ii, jj:
-                    neighbors = copy.copy(connectivity_graph.neighbors(node))
-                    for neighbor in neighbors:
-                        if neighbor in T:
-                            connectivity_graph.remove_edge(neighbor, node)
-                            check_degree(connectivity_graph, T, T.index(neighbor), C)
-                    check_degree(connectivity_graph, T, T.index(node), C)
-
-        else:
-            only_one_assigned(i, j, T, AQ, C, connectivity_graph)
-    return T
-
-
 def transpile_disconnected(connectivity_graph, C):
     C = copy.copy(C)
     connectivity_graph = copy.deepcopy(connectivity_graph)
