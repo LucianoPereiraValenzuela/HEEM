@@ -514,6 +514,8 @@ def grouping_entangled(labels, connectivity=None, connected_graph=False, print_p
         instead tries to optimize omega(T) in a greedy way.
     print_progress: bool (optional, default=False)
         If true, print the progress of the pauli graph and the grouping.
+    pauli_graph: nx.Graph (optional, default=None)
+        If the Pauli graph is already computed, then it can be used here and not computed twice
 
     Returns
     -------
@@ -555,7 +557,6 @@ def grouping_entangled(labels, connectivity=None, connected_graph=False, print_p
     SV = [x[0] for x in SV]
 
     WC = list(connectivity.edges)  # list of pairs of well-connected qubits
-    AS = []  # List of Pauli labels with assigned measurement
 
     C, _, _ = compatible_measurements(labels, one_qubit=False)
     T = transpile(connectivity, C, connected_graph)
@@ -567,33 +568,33 @@ def grouping_entangled(labels, connectivity=None, connected_graph=False, print_p
     groups = []
     measurements = []
 
-    pbar = tqdm(range(n), desc='Grouping entangled', disable=not print_progress)
-    for k in pbar:
-        i = SV[k]  # We run the Pauli strings in a decreasing order of CQ.
-        if i not in AS:  # If we enter to this loop, the i string will have its own group.
-            Mi = []
-            GroupMi = [i]
-            AS.append(i)
-            for m in range(n):  # We try to make the group of the string i as big as possible
-                j = SV[m]
-                # TODO: This can be improved so the same Pauli label is not taken twice
-                if j not in AS:
-                    Mi, S = measurement_assignment(labels[i], labels[j], Mi, AM, WC, OQ, T)
-                    if S:
-                        AS.append(j)
-                        GroupMi.append(j)
+    pbar = tqdm(total=n, desc='Grouping entangled', disable=not print_progress)
+    while len(SV) > 0:
+        pbar.update()
+        i = SV.pop(0)  # We run the Pauli strings in a decreasing order of CQ.
+        Mi = []
+        GroupMi = [i]
+        for j in SV:  # We try to make the group of the string i as big as possible
+            Mi, S = measurement_assignment(labels[i], labels[j], Mi, AM, WC, OQ, T)
+            if S:
+                pbar.update()
+                GroupMi.append(j)
 
-            QWM = list(range(N))  # Qubits without a Measurement assigned by Mi.
-            for PM in Mi:
-                for s in PM[1]:
-                    QWM.remove(s)
+        for index in GroupMi[1:]:
+            SV.remove(index)
 
-            for q in QWM:
-                TPBq = max(labels[GroupMi, q])
-                Mi.append([TPBq, [q]])
+        QWM = list(range(N))  # Qubits without a Measurement assigned by Mi.
+        for PM in Mi:
+            for s in PM[1]:
+                QWM.remove(s)
 
-            groups.append(GroupMi)
-            measurements.append(Mi)
+        for q in QWM:
+            TPBq = max(labels[GroupMi, q])
+            Mi.append([TPBq, [q]])
+
+        groups.append(GroupMi)
+        measurements.append(Mi)
+    pbar.close()
 
     return groups, measurements, T
 
