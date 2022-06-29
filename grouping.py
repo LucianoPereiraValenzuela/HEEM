@@ -213,39 +213,72 @@ def compatible_measurements(labels, T=None, connectivity_graph=None, one_qubit=T
     return C, CM, CQ
 
 
-# TODO: Documentation of transpile and revisit functions
-def transpile_connected(G, C):
+def check_degree(connectivity_graph, T, i, C):
     """
-
+    Check if physical qubit T[i] is connected to other ones. If not, modify the compatibility matrix
     """
-    C = copy.copy(C)
-    G = copy.deepcopy(G)
+    if nx.degree(connectivity_graph, T[i]) == 0:
+        C[i, :] = -1
+        C[:, i] = -1
 
-    N = np.shape(C)[0]
-    AQ = []
-    T = [None] * N
 
-    # First we assign two qubits, then we build the map from them ensuring that the resulting graph is connected
-    i, j = np.unravel_index(np.argmax(C), [N, N])
-    for ii, jj in G.edges():
-        # Update the map
-        T[i] = ii
-        T[j] = jj
-        AQ.append(i)
-        AQ.append(j)
+def only_one_assigned(i, j, T, AQ, C, connectivity_graph):
+    if i in AQ:
+        assigned = i
+        not_assigned = j
+    else:
+        assigned = j
+        not_assigned = i
+
+    # Assign the not assigned theoretical qubit to the first neighbor available
+    neighbor = list(connectivity_graph.neighbors(T[assigned]))[0]
+    if neighbor not in T:
+        T[not_assigned] = neighbor
+        AQ.append(not_assigned)
         C[i, j] = -1
         C[j, i] = -1
 
-        # Remove used edges
-        G.remove_edge(ii, jj)
-        if nx.degree(G, ii) == 0:
-            C[i, :] = -1
-            C[:, i] = -1
-        if nx.degree(G, jj) == 0:
-            C[j, :] = -1
-            C[:, j] = -1
+        # If the neighbors_2 of the just assigned qubit are also assigned,
+        # remove the edge in the graph because it is not available
+        neighbors_2 = copy.copy(connectivity_graph.neighbors(neighbor))
+        for neighbor_2 in neighbors_2:
+            if neighbor_2 in T:
+                connectivity_graph.remove_edge(neighbor_2, neighbor)
+                check_degree(connectivity_graph, T, T.index(neighbor_2), C)
+        check_degree(connectivity_graph, T, not_assigned, C)
 
-        break
+
+def transpile_connected(connectivity_graph, C):
+    """
+    Construct a theoretical-physical map for the qubits, ensuring that the graphs in the chip connectivity are
+    connected. For details on the arguments and the return, check the documentation of the transpile function.
+    """
+    C = copy.copy(C)
+    connectivity_graph = copy.deepcopy(connectivity_graph)
+
+    N = len(C)  # Number of qubits
+    AQ = []  # Assigned qubits
+    T = [None] * N
+
+    # Start with the two qubits with the highest compatibility
+    i, j = np.unravel_index(np.argmax(C), [N, N])
+
+    ii, jj = list(connectivity_graph.edges())[0]
+
+    # Update the map
+    T[i] = ii
+    T[j] = jj
+
+    AQ.append(i)
+    AQ.append(j)
+
+    C[i, j] = -1
+    C[j, i] = -1
+
+    # Remove used edges
+    connectivity_graph.remove_edge(ii, jj)
+    check_degree(connectivity_graph, T, i, C)
+    check_degree(connectivity_graph, T, j, C)
 
     while len(AQ) < N:
         Cp = C[AQ, :]
@@ -255,135 +288,104 @@ def transpile_connected(G, C):
         if i in AQ and j in AQ:
             C[i, j] = -1
             C[j, i] = -1
+        elif (i in AQ) or (j in AQ):
+            only_one_assigned(i, j, T, AQ, C, connectivity_graph)
 
-        elif i in AQ or j in AQ:
-            if i in AQ:
-                assigned = i
-                not_assigned = j
-            else:
-                assigned = j
-                not_assigned = i
-
-            # Assign the not assigned theoretical qubit to the first neighbor available
-            for neighbor in G.neighbors(T[assigned]):
-                if neighbor not in T:
-                    T[not_assigned] = neighbor
-                    AQ.append(not_assigned)
-                    C[i, j] = -1
-                    C[j, i] = -1
-
-                    # If the neighbors_2 of the just assigned qubit are also assigned,
-                    # remove the edge in the graph because it is not available
-                    neighbors_2 = copy.copy(G.neighbors(T[not_assigned]))
-                    for neighbor_2 in neighbors_2:  # Loop 1
-                        if neighbor_2 in T:
-                            G.remove_edge(neighbor_2, neighbor)
-                            if nx.degree(G, neighbor_2) == 0:
-                                s = T.index(neighbor_2)
-                                C[s, :] = -1
-                                C[:, s] = -1
-
-                    if nx.degree(G, neighbor) == 0:
-                        C[not_assigned, :] = -1
-                        C[:, not_assigned] = -1
-
-                    break
     return T
 
 
-def transpile_disconnected(G, C):
+def transpile_disconnected_2(connectivity_graph, C):
     """
-
+    Construct a theoretical-physical map for the qubits. For details on the arguments and the return, check the documentation of the transpile function.
     """
     C = copy.copy(C)
-    G = copy.deepcopy(G)
+    connectivity_graph = copy.deepcopy(connectivity_graph)
 
-    N = np.shape(C)[0]
+    N = len(C)
     AQ = []
     T = [None] * N
 
     while len(AQ) < N:
         i, j = np.unravel_index(np.argmax(C), [N, N])
 
-        if i in AQ and j in AQ:
+        if (i in AQ) and (j in AQ):
             C[i, j] = -1
             C[j, i] = -1
         elif (i not in AQ) and (j not in AQ):
-            success = False
-            for ii, jj in G.edges():
-                if ii not in T and jj not in T:
+            ii, jj = list(connectivity_graph.edges())[0]
+
+            C[i, j] = -1
+            C[j, i] = -1
+
+            if (ii not in T) and (jj not in T):
+                T[i] = ii
+                T[j] = jj
+                AQ.append(i)
+                AQ.append(j)
+
+                for node in ii, jj:
+                    neighbors = copy.copy(connectivity_graph.neighbors(node))
+                    for neighbor in neighbors:
+                        if neighbor in T:
+                            connectivity_graph.remove_edge(neighbor, node)
+                            check_degree(connectivity_graph, T, T.index(neighbor), C)
+                    check_degree(connectivity_graph, T, T.index(node), C)
+
+        else:
+            only_one_assigned(i, j, T, AQ, C, connectivity_graph)
+    return T
+
+
+def transpile_disconnected(connectivity_graph, C):
+    C = copy.copy(C)
+    connectivity_graph = copy.deepcopy(connectivity_graph)
+
+    N = len(C)
+    AQ = []
+    T = [None] * N
+
+    while len(AQ) < N:
+        i, j = np.unravel_index(np.argmax(C), [N, N])
+
+        if (i in AQ) and (j in AQ):
+            C[i, j] = -1
+            C[j, i] = -1
+        elif (i not in AQ) and (j not in AQ):
+            C[i, j] = -1
+            C[j, i] = -1
+            for ii, jj in connectivity_graph.edges():
+                if (ii not in T) and (jj not in T):
                     T[i] = ii
                     T[j] = jj
                     AQ.append(i)
                     AQ.append(j)
-                    C[i, j] = -1
-                    C[j, i] = -1
-                    success = True
 
                     for node in ii, jj:
-                        neighbors = copy.copy(G.neighbors(node))
-                        for neighbor in neighbors:  # Loop 1
+                        neighbors = copy.copy(connectivity_graph.neighbors(node))
+                        for neighbor in neighbors:
                             if neighbor in T:
-                                G.remove_edge(neighbor, node)
-                                if nx.degree(G, neighbor) == 0:
-                                    s = T.index(neighbor)
-                                    C[s, :] = -1
-                                    C[:, s] = -1
-                        if nx.degree(G, node) == 0:
-                            C[T.index(node), :] = -1
-                            C[:, T.index(node)] = -1
+                                connectivity_graph.remove_edge(neighbor, node)
+                                check_degree(connectivity_graph, T, T.index(neighbor), C)
+                        check_degree(connectivity_graph, T, T.index(node), C)
 
                     break
 
-            if not success:
-                C[i, j] = -1
-                C[j, i] = -1
+        else:
+            only_one_assigned(i, j, T, AQ, C, connectivity_graph)
 
-        elif i in AQ or j in AQ:  # if we reach this point, then only one of i and j will be in AQ.
-            if i in AQ:
-                assigned = i
-                not_assigned = j
-            else:
-                assigned = j
-                not_assigned = i
-
-            # Assign the not assigned theoretical qubit to the first neighbor available
-            for neighbor in G.neighbors(T[assigned]):
-                if neighbor not in T:
-                    T[not_assigned] = neighbor
-                    AQ.append(not_assigned)
-                    C[i, j] = -1
-                    C[j, i] = -1
-
-                    # If the neighbors_2 of the just assigned qubit are also assigned,
-                    # remove the edge in the graph because it is not available
-                    neighbors_2 = copy.copy(G.neighbors(neighbor))
-                    for neighbor_2 in neighbors_2:  # Loop 1
-                        if neighbor_2 in T:
-                            G.remove_edge(neighbor_2, neighbor)
-                            if nx.degree(G, neighbor_2) == 0:
-                                s = T.index(neighbor_2)
-                                C[s, :] = -1
-                                C[:, s] = -1
-
-                    if nx.degree(G, neighbor) == 0:
-                        C[not_assigned, :] = -1
-                        C[:, not_assigned] = -1
-
-                    break
     return T
 
 
-def transpile(G, C, connected=False):
+def transpile(connectivity_graph, C, connected):
     """
-
+    Construct a theoretical-physical mapping for the qubits taking into account the chip connectivity
     Parameters
     ----------
-    G: nx.Graph
+    connectivity_graph: nx.Graph
         Pauli graph
     C:  ndarray (N, N)
         Compatibility matrix. More info in function compatibilities().
-    connected: bool (optional, default=False)
+    connected: bool
         If True the transpile algorithm ensures that the subgraph of the theoretical qubits in the chip is connected.
         More info in function groupingWithOrder()
 
@@ -394,9 +396,9 @@ def transpile(G, C, connected=False):
     """
 
     if connected:
-        return transpile_connected(G, C)
+        return transpile_connected(connectivity_graph, C)
     else:
-        return transpile_disconnected(G, C)
+        return transpile_disconnected(connectivity_graph, C)
 
 
 def measurement_assignment(Vi, Vj, Mi, AM, WC, OQ, T):
@@ -538,12 +540,12 @@ def grouping_entangled(labels, connectivity=None, connected_graph=False, print_p
         connectivity = nx.Graph()
         connectivity.add_edges_from(list(permutations(list(range(N)), 2)))
 
-    # if type(G) == nx.classes.graph.Graph:
-    #     pass
-    # elif type(G) == list:
-    #     temp = copy.copy(G)
-    #     G = nx.Graph()
-    #     G.add_edges_from(temp)
+    if type(connectivity) == nx.classes.graph.Graph:
+        pass
+    elif type(connectivity) == list:
+        temp = copy.copy(connectivity)
+        connectivity = nx.Graph()
+        connectivity.add_edges_from(temp)
 
     if len(connectivity.nodes) < len(labels[0]):
         raise Exception('The number of qubits in the device is not high enough. Use a bigger device.')
@@ -701,4 +703,33 @@ def test_grouping_measurements(labels, groups, measurements):
                     raise Exception(
                         'The Pauli label {} is incompatible with the measurement {} over the qubit(s) {}'.format(
                             grouped_label, index_measure, *qubits))
+    return True
+
+
+def test_connectivity(measurements, T, connectivity):
+    """
+    Test that entangled measurements are only provided between well-connected qubits.
+
+    Parameters
+    ----------
+    measurements: list[list[list]]
+        Measurements for each group of Pauli labels. Each grouped measurements is constituted with multiple one qubit
+        and two qubit partial measurements. The first index denotes the partial measurement to perform, and the
+        second one the qubits to measure.
+    T: list
+        T is the theo-phys map chosen. T[i]=j means that the i-theoretical qubit is mapped to the j-physical qubit.
+    connectivity: list
+        List that contains the connectivity of the chip.
+
+    Returns
+    -------
+    If the test passes, True is returned. Otherwise, and exception is raised.
+    """
+    for measurement in measurements:
+        for partial_measurement in measurement:
+            if partial_measurement[0] > 4:  # Only check two qubit measurements
+                phy_qubits = [T[q] for q in partial_measurement[1]]
+                if tuple(phy_qubits) not in connectivity:
+                    raise Exception('Entangled measurement between non-connected '
+                                    'qubits {} and {}'.format(phy_qubits[0], phy_qubits[1]))
     return True
