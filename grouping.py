@@ -4,6 +4,9 @@ from itertools import permutations
 import copy
 from tqdm.auto import tqdm
 from time import time
+import pickle
+import matplotlib.pyplot as plt
+from qiskit.compiler import transpile as transpile_qiskit
 
 """
 In order to simplify the programming, we use a numerical encoding to identify each Pauli string with an integer
@@ -693,7 +696,7 @@ def test_connectivity(measurements, T, connectivity):
     T: list
         T is the theo-phys map chosen. T[i]=j means that the i-theoretical qubit is mapped to the j-physical qubit.
     connectivity: list
-        List that contains the connectivity of the chip.
+        Connectivity of the chip.
 
     Returns
     -------
@@ -701,7 +704,7 @@ def test_connectivity(measurements, T, connectivity):
     """
     for measurement in measurements:
         for partial_measurement in measurement:
-            if partial_measurement[0] > 4:  # Only check two qubit measurements
+            if partial_measurement[0] > 3:  # Only check two qubit measurements
                 phy_qubits = [T[q] for q in partial_measurement[1]]
                 if tuple(phy_qubits) not in connectivity:
                     raise Exception('Entangled measurement between non-connected '
@@ -714,64 +717,107 @@ def labels_convention(labels):
     Return the Pauli labels in the number convention.
     """
     # TODO: Complete this function to allow qiskit qubit operators
-    if type(labels[0]) == str:
-        pass
-    elif (type(labels[0]) == np.ndarray) or (type(labels[0]) == list):
-        pass
+    # TODO: Use int8 as the type of the array
+    if labels is not None:
+        if type(labels[0]) == str:
+            pass
+        elif (type(labels[0]) == np.ndarray) or (type(labels[0]) == list):
+            pass
+        else:
+            pass
     else:
         pass
 
     return labels
 
 
+# TODO: This function should be moved to utils
+def number2string(labels):
+    """
+    Return the Pauli labels from the number convention , e.g. [0, 2, 1, 3], to the string convention 'IYXZ'.
+    """
+    mapping = ['I', 'X', 'Y', 'Z']
+    n, N = np.shape(labels)
+
+    labels_string = []
+    for i in range(n):
+        string = ''
+        for j in range(N):
+            string += mapping[labels[i, j]]
+        labels_string.append(string)
+    return labels_string
+
+
+# TODO: This function should be moved to utils
+def add_edge(G, node1, node2):
+    if node2 < node1:
+        node1, node2 = node2, node2
+
+    if node1 != node2:
+        edges = list(G.edges())
+        if (node1, node2) in edges:
+            last_weight = nx.get_edge_attributes(G, "weight")[(node1, node2)]
+        else:
+            last_weight = 0
+
+        G.add_edge(node1, node2, weight=last_weight + 1)
+    else:
+        G.add_node(node1)
+
+
 class Grouping:
-    def __init__(self, labels, connectivity=None, tests=True, connected_graph=True, entangled=True,
-                 print_progress=False, method='HEEM', transpiled_order=True):
-        self._labels = labels_convention(labels)
+    def __init__(self, labels=None, connectivity=None, tests=True, connected_graph=True, print_progress=True,
+                 method='HEEM', transpiled_order=True, pauli_graph=None, load=None):
+        if load is None:
+            self._labels = labels_convention(labels)
 
-        self._connectivity = connectivity
-        self._tests = tests
-        self._connected_graph = connected_graph
-        self._entangled = entangled
-        self._print_progress = print_progress
-        self._transpiled_order = transpiled_order
+            self._connectivity = connectivity
+            self._tests = tests
+            self._connected_graph = connected_graph
+            self._print_progress = print_progress
+            self._transpiled_order = transpiled_order
+            self._pauli_graph = pauli_graph
 
-        self.T = None
-        self.groups = []
-        self.measurements = []
-        self._pauli_graph = None
-        self.grouping_time = 0
-        self.total_groups = 0
+            self.T = None
+            self.groups = None
+            self.measurements = None
+            self.grouping_time = 0
+            self.n_groups = 0
 
-        self._coeffs = [0] * len(self._labels)  # TODO: Extract coefficients from qubit operator
+            self._method = method
 
-        self._method = method
+            if self._method == 'TPB':
+                self._entangled = False
+            elif self._method == 'EM':
+                self._entangled = True
+                self._connectivity = None
+            elif self._method == 'HEEM':
+                self._entangled = True
+                if self._connectivity is None:
+                    print('HEEM grouping method have been chosen, but no chip connectivity provided.'
+                          ' Switching to EM assuming an all-to-all connectivity')
+            else:
+                raise Exception(
+                    '{} not implemented. Please, use one of these methods: TPB, EM or HEEM.'.format(self._method))
 
-        if self._method == 'TPB':
-            self._entangled = False
-        elif self._method == 'EM':
-            self._entangled = True
-            self._connectivity = None
-        elif self._method == 'HEEM':
-            self._entangled = True
+            self._n_qubits = len(self._labels[0])
+
             if self._connectivity is None:
-                print('HEEM grouping method have been chosen, but no chip connectivity provided.'
-                      ' Switching to EM assuming an all-to-all connectivity')
+                self._connectivity = list(permutations(list(range(self._n_qubits)), 2))
 
-        self._n_qubits = len(self._labels[0])
-        if self._connectivity is None:
-            self._connectivity = list(permutations(list(range(self._n_qubits)), 2))
+            self.connectivity_graph = nx.Graph()
+            self.connectivity_graph.add_edges_from(self._connectivity)
 
-        self.connectivity_graph = nx.Graph()
-        self.connectivity_graph.add_edges_from(self._connectivity)
+            self._coeffs = [0] * len(self._labels)  # TODO: Extract coefficients from qubit operator
+        else:
+            self._load_data(load)
 
     def group(self):
-        if self._pauli_graph is None:
-            self._pauli_graph = build_pauli_graph(self._labels, print_progress=self._print_progress)
+        self._check_pauli_graph()
 
         t0 = time()
         if self._entangled:
-            self.groups, self.measurements, self.T = grouping_entangled(self._labels, connectivity=self._connectivity,
+            self.groups, self.measurements, self.T = grouping_entangled(self._labels, self._connectivity,
                                                                         connected_graph=self._connected_graph,
                                                                         print_progress=self._print_progress,
                                                                         pauli_graph=self._pauli_graph,
@@ -779,20 +825,131 @@ class Grouping:
         else:
             self.groups, self.measurements = grouping_tpb(self._labels, print_progress=self._print_progress,
                                                           pauli_graph=self._pauli_graph)
+            self.T = list(range(self._n_qubits))
+
         tf = time()
 
         self.grouping_time = tf - t0
-        self.total_groups = len(self.groups)
+        self.n_groups = len(self.groups)
 
-        if self._tests:
-            test_grouping_measurements(self._labels, self.groups, self.measurements)
-            test_grouping_paulis(self._labels, self.groups)
-            test_connectivity(self.measurements, self.T, self._connectivity)
+        test_grouping_measurements(self._labels, self.groups, self.measurements)
+        test_grouping_paulis(self._labels, self.groups)
+        test_connectivity(self.measurements, self.T, self._connectivity)
 
-    # TODO: Add function to obtain the Pauli labels in the string convention
+    def labels_string(self):
+        return number2string(self._labels)
 
-    # TODO: Add function to compute the number of CNOTs when applied to a given chip
+    def save_data(self, file_name):
+        file_name += '.pickle'
+        with open(file_name, 'wb') as file:
+            pickle.dump(self.__dict__, file)
 
-    # TODO: Add function to save and load data
+    def _load_data(self, file_name):
+        file_name += '.pickle'
+        with open(file_name, 'rb') as file:
+            self.__dict__.update(pickle.load(file))
 
-    # TODO: Add function to shuffle the Pauli strings and the qubits
+    def _check_grouping(self):
+        if self.groups is None:
+            self.group()
+
+    def _check_pauli_graph(self):
+        if self._pauli_graph is None:
+            self._pauli_graph = build_pauli_graph(self._labels, print_progress=self._print_progress)
+
+    def draw_entangled_measurements(self, seed=0):
+        self._check_grouping()
+
+        plt.figure()
+        G = nx.Graph()
+
+        for measurement in self.measurements:
+            for partial_measurement in measurement:
+                if partial_measurement[0] > 3:
+                    add_edge(G, self.T[partial_measurement[1][0]], self.T[partial_measurement[1][1]])
+
+        e = list(G.edges())
+        pos = nx.spring_layout(G, seed=seed)
+
+        nx.draw_networkx_nodes(G, pos)
+        nx.draw_networkx_labels(G, pos, font_size=12, font_family="sans-serif")
+
+        nx.draw_networkx_edges(G, pos, edgelist=e, width=3)
+        edge_labels = nx.get_edge_attributes(G, "weight")
+        nx.draw_networkx_edge_labels(G, pos, edge_labels)
+
+        return G
+
+    def draw_transpiled_chip(self, seed=0):
+        self._check_grouping()
+
+        plt.figure()
+
+        G = nx.Graph()
+        for edge in self._connectivity:
+            try:
+                if edge[0] < edge[1]:
+                    add_edge(G, edge[0], edge[1])
+            except ValueError:
+                pass
+
+        e_all = list(G.edges())
+
+        e_transpiled = []
+        for node1, node2 in e_all:
+            try:
+                if node1 < node2:
+                    if (node1 in self.T) and (node2 in self.T):
+                        e_transpiled.append((node1, node2))
+            except ValueError:
+                pass
+
+        pos = nx.spring_layout(G, seed=seed)
+        pos2 = {}
+        mapping = {}
+        for key in pos.keys():
+            new_key = key
+            if key in self.T:
+                new_key = str(key) + '/' + str(self.T.index(key))
+            pos2[new_key] = pos[key]
+            mapping[key] = new_key
+        nx.relabel_nodes(G, mapping, copy=False)
+
+        nx.draw_networkx_nodes(G, pos2)
+        nx.draw_networkx_labels(G, pos2, font_size=12, font_family="sans-serif")
+
+        nx.draw_networkx_edges(G, pos, edgelist=e_all, width=3)
+        nx.draw_networkx_edges(G, pos, edgelist=e_transpiled, width=3, edge_color='red')
+
+        return G
+
+    def draw_pauli_graph(self):
+        self._check_pauli_graph()
+
+        nx.draw(self._pauli_graph)
+
+    def n_cnots(self, coupling_map):
+        from heem import measure_circuit_factor
+
+        circuits = [measure_circuit_factor(measure, self._n_qubits, make_measurements=False) for measure in
+                    self.measurements]
+        circuits_transpiled = transpile_qiskit(circuits, coupling_map=coupling_map, initial_layout=self.T[::-1])
+
+        n_cnots = 0
+        for circuit in circuits_transpiled:
+            try:
+                n_cnots += circuit.count_ops()['cx']
+            except KeyError:
+                pass
+
+        return n_cnots
+
+    def _shuffle_labels(self):
+        order_paulis = np.arange(len(self._labels))
+        np.random.shuffle(order_paulis)
+        self._labels = self._labels[order_paulis]
+
+    def _shuffle_qubits(self):
+        order_qubits = np.arange(self._n_qubits)
+        np.random.shuffle(order_qubits)
+        self._labels = self._labels[:, order_qubits]
