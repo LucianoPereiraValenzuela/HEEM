@@ -7,7 +7,12 @@ from tqdm.auto import tqdm
 from time import time
 import pickle
 import matplotlib.pyplot as plt
+
 from qiskit.compiler import transpile as transpile_qiskit
+from qiskit.opflow.primitive_ops import TaperedPauliSumOp, PauliSumOp
+
+from molecules import extract_Paulis
+from utils import string2number, number2string, add_edge
 
 """
 In order to simplify the programming, we use a numerical encoding to identify each Pauli string with an integer
@@ -35,6 +40,7 @@ COMP_LIST = [[[]], [(0,), (1,)], [(0,), (2,)], [(0,), (3,)],  # One qubit measur
 LENGTH_MEAS = [len(x[0]) for x in COMP_LIST]
 
 PartialMeasurement = Tuple[int, List[int]]
+MoleculeType = Union[PauliSumOp, TaperedPauliSumOp]
 
 
 def build_pauli_graph(labels: np.ndarray, print_progress: bool = False) -> nx.Graph:
@@ -722,79 +728,37 @@ def test_connectivity(measurements: List[List[PartialMeasurement]], T: List[int]
     return True
 
 
-def labels_convention(labels: Union[np.ndarray, List[str]]) -> np.ndarray:
+def pauli_labels_numbers(labels: Union[np.ndarray, List[str], MoleculeType],
+                         coeffs: Optional[Union[List[complex], np.ndarray]] = None) -> Tuple[
+    np.ndarray, Union[List[complex], np.ndarray]]:
     """
     Return the Pauli labels in the number convention.
     """
-    # TODO: Complete this function to allow qiskit qubit operators
-    # TODO: Use int8 as the type of the array
-
     if type(labels[0]) == str:
-        mapping = {'I': 0, 'X': 1, 'Y': 2, 'Z': 3}
-        n = len(labels)
-        N = len(labels[0])
-        labels_temp = copy.copy(labels)
-        labels = np.zeros((n, N), dtype=np.int8)
-        for i in range(n):
-            for j in range(N):
-                labels[i, j] = mapping[labels_temp[i][j]]
-
+        labels = string2number(labels)
+        if coeffs is None:
+            coeffs = [0] * len(labels)
     elif (type(labels[0]) == np.ndarray) or (type(labels[0]) == list):
         labels = np.array(labels, dtype=np.int8)
+        if coeffs is None:
+            coeffs = [0] * len(labels)
+    elif (type(labels) is TaperedPauliSumOp) or (type(labels) is PauliSumOp):
+        labels, coeffs = extract_Paulis(labels)
     else:
-        pass
+        raise Exception('labels type not implemented. Please, use a list of strings, a numpy array with the number'
+                        ' convention for each Pauli string, a PauliSumOp or a TaperedPauliSumOp')
 
-    return labels
-
-
-# TODO: This function should be moved to utils
-def number2string(labels: np.ndarray) -> List[str]:
-    """
-    Return the Pauli labels from the number convention , e.g. [0, 2, 1, 3], to the string convention 'IYXZ'.
-    """
-    mapping = ['I', 'X', 'Y', 'Z']
-
-    shape = np.shape(labels)
-    if len(shape) == 2:
-        n, N = shape
-    else:
-        labels = labels.reshape(1, -1)
-        n, N = np.shape(labels)
-
-    labels_string = []
-    for i in range(n):
-        string = ''
-        for j in range(N):
-            string += mapping[labels[i, j]]
-        labels_string.append(string)
-    return labels_string
-
-
-# TODO: This function should be moved to utils
-def add_edge(G: nx.Graph, node1: int, node2: int) -> None:
-    if node2 < node1:
-        node1, node2 = node2, node2
-
-    if node1 != node2:
-        edges = list(G.edges())
-        if (node1, node2) in edges:
-            last_weight = nx.get_edge_attributes(G, "weight")[(node1, node2)]
-        else:
-            last_weight = 0
-
-        G.add_edge(node1, node2, weight=last_weight + 1)
-    else:
-        G.add_node(node1)
+    return labels, coeffs
 
 
 class Grouping:
     def __init__(self, labels: Optional[Union[np.ndarray, List[str]]] = None,
                  connectivity: Optional[Union[List[int], Tuple[int, int]]] = None, tests: bool = True,
                  connected_graph: bool = True, print_progress: bool = True, method: str = 'HEEM',
-                 transpiled_order: bool = True, pauli_graph: Optional[nx.Graph] = None,
-                 load: Optional[str] = None) -> None:
+                 transpiled_order: bool = True, pauli_graph: Optional[nx.Graph] = None, load: Optional[str] = None,
+                 coeffs: Optional[Union[List[complex], np.ndarray]] = None) -> None:
         if load is None:
-            self._labels = labels_convention(labels)
+            self._labels, self._coeffs = pauli_labels_numbers(labels, coeffs)
 
             self._connectivity = connectivity
             self._tests = tests
@@ -834,7 +798,6 @@ class Grouping:
             self._connectivity_graph = nx.Graph()
             self._connectivity_graph.add_edges_from(self._connectivity)
 
-            self._coeffs = [0] * len(self._labels)  # TODO: Extract coefficients from qubit operator
         else:
             self._load_data(load)
 
