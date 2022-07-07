@@ -4,12 +4,24 @@ import networkx as nx
 import copy
 
 
+def random_labels(n: int, N: int) -> np.ndarray:
+    """
+    Return a total of n Pauli strings of N qubits.
+    """
+    labels = []
+    for i in range(n):
+        labels.append(np.random.randint(4, size=N))
+    return np.array(labels)
+
+
 def string2number(labels: List[str]) -> np.ndarray:
     mapping = {'I': 0, 'X': 1, 'Y': 2, 'Z': 3}
-    n = len(labels)
-    N = len(labels[0])
+
+    n = len(labels)  # Number of labels
+    N = len(labels[0])  # Number of qubits
+
     labels_temp = copy.copy(labels)
-    labels = np.zeros((n, N), dtype=np.int8)
+    labels = np.zeros((n, N), dtype=np.int8)  # Since the indices < 256, use int8 to reduce memory usage
     for i in range(n):
         for j in range(N):
             labels[i, j] = mapping[labels_temp[i][j]]
@@ -23,6 +35,7 @@ def number2string(labels: np.ndarray) -> List[str]:
     """
     mapping = ['I', 'X', 'Y', 'Z']
 
+    # If only one label is provided, then reshape to (1, N)
     shape = np.shape(labels)
     if len(shape) == 2:
         n, N = shape
@@ -40,10 +53,14 @@ def number2string(labels: np.ndarray) -> List[str]:
 
 
 def add_edge(G: nx.Graph, node1: int, node2: int) -> None:
+    """
+    Add an edge in the graph between node1 and node2 with width equals to one. If the edge already exists, then the
+    weight increases by one.
+    """
     if node2 < node1:
-        node1, node2 = node2, node2
+        node1, node2 = node2, node2  # Ensure that node1 < node2
 
-    if node1 != node2:
+    if node1 != node2:  # Do not include self edges
         edges = list(G.edges())
         if (node1, node2) in edges:
             last_weight = nx.get_edge_attributes(G, "weight")[(node1, node2)]
