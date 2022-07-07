@@ -1,4 +1,4 @@
-from typing import Union, List, Optional, Dict, Tuple
+from typing import Union, List, Optional, Dict, Tuple, Iterable
 import numpy as np
 import networkx as nx
 from itertools import permutations
@@ -28,7 +28,7 @@ if we consider the measure 4 (Bell) its list of compatibility should contain [0,
 Bell measurement is compatible with II, XX, YY and ZZ, respectively.
 """
 
-COMP_LIST = [[[]], [(0,), (1,)], [(0,), (2,)], [(0,), (3,)],  # One qubit measurements (0, 1, 2, 3)
+COMP_LIST = [[[]], [(0,), (1,)], [(0,), (2,)], [(0,), (3,)],  # One qubit measurements [I(O), X(1), Y(2), Z(3)]
              [(0, 0), (1, 1), (2, 2), (3, 3)],  # Bell (4)
              [(0, 0), (1, 1), (2, 3), (3, 2)],  # OmegaX (5)
              [(0, 0), (2, 2), (1, 3), (3, 1)],  # OmegaY (6)
@@ -43,13 +43,13 @@ PartialMeasurement = Tuple[int, List[int]]
 MoleculeType = Union[PauliSumOp, TaperedPauliSumOp]
 
 
-def build_pauli_graph(labels: np.ndarray, print_progress: bool = False) -> nx.Graph:
+def build_pauli_graph(labels: Union[np.ndarray, List[str], MoleculeType], print_progress: bool = False) -> nx.Graph:
     """
     Construction of the Pauli Graph.
 
     Parameters
     ----------
-    labels: ndarray (n, N)
+    labels: ndarray (n, N) or list[str] or MoleculeType
         Each row represents a Pauli string, and each column represents a qubit. Thus, n is the number of Pauli strings
         and N is the number of qubits. The labels are represented with indices.
     print_progress: bool (optional, default=False)
@@ -65,6 +65,8 @@ def build_pauli_graph(labels: np.ndarray, print_progress: bool = False) -> nx.Gr
             b) one of the strings has a factor I ([0] in our encoding).
     """
 
+    labels, _ = pauli_labels_numbers(labels)  # Ensure the number convention
+
     # Number of strings
     n = np.size(labels[:, 0])
 
@@ -72,13 +74,12 @@ def build_pauli_graph(labels: np.ndarray, print_progress: bool = False) -> nx.Gr
     PG.add_nodes_from(np.arange(n))
 
     pbar = tqdm(range(n), desc='Pauli graph', disable=not print_progress)
-    for i in pbar:  # Loop over each Pauli string v_i
-        v_i = labels[i, :]
-        for j in range(i + 1, n):  # Nested loop over the following Pauli strings v_j
+    for i, v_i in zip(pbar, labels):  # Loop over each Pauli string
+        for j in range(i + 1, n):  # Loop over the next Pauli strings
             v_j = labels[j, :]
             compatible_qubits = np.logical_or.reduce((v_i == v_j, v_i == 0, v_j == 0))
-            if not np.all(compatible_qubits):  # If at least one of the qubits shared by the PS is not commutative
-                PG.add_edges_from([(i, j)])  # add an edge in the Pauli Graph
+            if not np.all(compatible_qubits):  # If one of the qubits shared by the Pauli label, then is not commutative
+                PG.add_edge(i, j)
 
     return PG
 
@@ -139,20 +140,20 @@ def compatible_measurements_2q(measurement: int, f: Dict[str, int]) -> int:
         Number of compatible measurements.
     """
 
-    pair = []
+    pairs = []
     for pair_labels in COMP_LIST[measurement]:  # Iterate over the pair of compatible Pauli labels
-        pair.append(str(pair_labels[0]) + str(pair_labels[1]))
+        pairs.append(str(pair_labels[0]) + str(pair_labels[1]))
 
     counts = 0
-    for pair_temp in pair:
-        counts += f[pair_temp]
+    for pair in pairs:
+        counts += f[pair]
 
     n_compatibilities = int(counts * (counts - 1) / 2)
 
     return n_compatibilities
 
 
-def compatible_measurements(labels: np.ndarray, T: Optional[List[int]] = None,
+def compatible_measurements(labels: np.ndarray, T: Optional[Union[List[int], Iterable]] = None,
                             connectivity_graph: Optional[nx.Graph] = None, one_qubit: bool = True,
                             two_qubit: bool = True) -> Tuple[np.ndarray, List[int], List[int]]:
     """
@@ -192,9 +193,9 @@ def compatible_measurements(labels: np.ndarray, T: Optional[List[int]] = None,
 
     n, N = np.shape(labels)
 
-    C = np.diag(-1 * np.ones(N, dtype=int))
-    CM = [0] * 10
-    CQ = [0] * N
+    C = np.diag(np.ones(N) * np.nan)  # Compatibility matrix
+    CM = [0] * 10  # Compatible measurements
+    CQ = [0] * N  # Compatible qubits
 
     if T is None:
         T = list(range(N))
@@ -204,9 +205,9 @@ def compatible_measurements(labels: np.ndarray, T: Optional[List[int]] = None,
     else:
         connectivity = connectivity_graph.edges()
 
-    for i in range(N):  # First qubit
+    for i in range(N):
         if two_qubit:
-            for j in range(i + 1, N):  # Second qubit
+            for j in range(i + 1, N):
                 if (T[i], T[j]) in connectivity:  # Connected qubits
                     PSij = labels[:, [i, j]]
 
@@ -214,31 +215,31 @@ def compatible_measurements(labels: np.ndarray, T: Optional[List[int]] = None,
                     for label in PSij:  # Generate factors list
                         F[str(label[0]) + str(label[1])] += 1
 
-                    for measurement in range(4, 10):  # Fill compatibility measurements between qubits i and j
+                    for measurement in range(4, 10):  # Iterate over 2-qubits measurements
                         n_counts = compatible_measurements_2q(measurement, F)
-
                         C[i, j] += n_counts
                         C[j, i] += n_counts
                         CM[measurement] += n_counts
 
         if one_qubit:
-            CQ[i] = 1 + np.sum(C[i, :])
-            for measurement in range(1, 4):
+            CQ[i] += np.sum(C[i, :])
+            for measurement in range(1, 4):  # Iterate over 1-qubit measurements
                 n_counts = compatible_measurements_1q(measurement, labels[:, i])
                 CQ[i] += n_counts
                 CM[measurement] += n_counts
 
-    # TODO: Is possible that CM gives preference to one-qubit measurements over two-qubit ones?
+    # TODO: Is it possible that CM gives preference to one-qubit measurements over two-qubit ones?
     return C, CM, CQ
 
 
 def check_degree(connectivity_graph: nx.Graph, T: List[int], i: int, C: np.ndarray) -> None:
     """
-    Check if physical qubit T[i] is connected to other ones. If not, modify the compatibility matrix
+    Check if physical qubit T[i] is connected to other ones. If not, modify the compatibility matrix and set the row and
+    the column associate to the qubit to np.nan.
     """
     if nx.degree(connectivity_graph, T[i]) == 0:
-        C[i, :] = -1
-        C[:, i] = -1
+        C[i, :] = np.nan
+        C[:, i] = np.nan
 
 
 def only_one_assigned(i: int, j: int, T: List[int], AQ: List[int], C: np.ndarray, connectivity_graph: nx.Graph) -> None:
@@ -249,17 +250,15 @@ def only_one_assigned(i: int, j: int, T: List[int], AQ: List[int], C: np.ndarray
         assigned = j
         not_assigned = i
 
-    # Assign the not assigned theoretical qubit to the first neighbor available
-    neighbor = list(connectivity_graph.neighbors(T[assigned]))[0]
+    # Associate the not assigned theoretical qubit to the first neighbor available
+    neighbor = list(connectivity_graph[T[assigned]])[0]
     if neighbor not in T:
         T[not_assigned] = neighbor
         AQ.append(not_assigned)
-        C[i, j] = -1
-        C[j, i] = -1
+        C[[i, j], [j, i]] = np.nan
 
-        # If the neighbors_2 of the just assigned qubit are also assigned,
-        # remove the edge in the graph because it is not available
-        neighbors_2 = copy.copy(connectivity_graph.neighbors(neighbor))
+        # If the neighbors of the assigned qubit are already assigned, remove the edge in the graph
+        neighbors_2 = list(connectivity_graph[neighbor])
         for neighbor_2 in neighbors_2:
             if neighbor_2 in T:
                 connectivity_graph.remove_edge(neighbor_2, neighbor)
@@ -280,34 +279,31 @@ def transpile_connected(connectivity_graph: nx.Graph, C: np.ndarray) -> List[int
     T = [-1] * N
 
     # Start with the two qubits with the highest compatibility
-    i, j = np.unravel_index(np.argmax(C), [N, N])
-
+    i, j = np.unravel_index(np.nanargmax(C), [N, N])
     ii, jj = list(connectivity_graph.edges())[0]
 
     # Update the map
     T[i] = ii
     T[j] = jj
 
+    # Add qubits to the assigned list
     AQ.append(i)
     AQ.append(j)
 
-    C[i, j] = -1
-    C[j, i] = -1
+    C[[i, j], [j, i]] = np.nan
 
     # Remove used edges
     connectivity_graph.remove_edge(ii, jj)
     check_degree(connectivity_graph, T, i, C)
     check_degree(connectivity_graph, T, j, C)
 
-    while len(AQ) < N:
-        Cp = C[AQ, :]
-        i, j = np.unravel_index(np.argmax(Cp), [N, N])
+    while len(AQ) < N:  # While not all qubits assigned
+        i, j = np.unravel_index(np.nanargmax(C[AQ, :]), [N, N])
         i = AQ[i]
 
-        if i in AQ and j in AQ:
-            C[i, j] = -1
-            C[j, i] = -1
-        elif (i in AQ) or (j in AQ):
+        if j in AQ:
+            C[[i, j], [j, i]] = np.nan
+        else:
             only_one_assigned(i, j, T, AQ, C, connectivity_graph)
 
     return T
@@ -322,14 +318,12 @@ def transpile_disconnected(connectivity_graph: nx.Graph, C: np.ndarray) -> List[
     T = [-1] * N
 
     while len(AQ) < N:
-        i, j = np.unravel_index(np.argmax(C), [N, N])
+        i, j = np.unravel_index(np.nanargmax(C), [N, N])
 
         if (i in AQ) and (j in AQ):
-            C[i, j] = -1
-            C[j, i] = -1
+            C[[i, j], [j, i]] = np.nan
         elif (i not in AQ) and (j not in AQ):
-            C[i, j] = -1
-            C[j, i] = -1
+            C[[i, j], [j, i]] = np.nan
             for ii, jj in connectivity_graph.edges():
                 if (ii not in T) and (jj not in T):
                     T[i] = ii
@@ -338,7 +332,7 @@ def transpile_disconnected(connectivity_graph: nx.Graph, C: np.ndarray) -> List[
                     AQ.append(j)
 
                     for node in ii, jj:
-                        neighbors = copy.copy(connectivity_graph.neighbors(node))
+                        neighbors = list(connectivity_graph[node])
                         for neighbor in neighbors:
                             if neighbor in T:
                                 connectivity_graph.remove_edge(neighbor, node)
@@ -457,16 +451,16 @@ def measurement_assignment(Vi: np.ndarray, Vj: np.ndarray, Mi: Union[List, List[
 
     UMi = Mi[:]
     while len(U) != 0:
-        for Eps in AM:  # Admissible measurement loop
-            if len(U) >= LENGTH_MEAS[Eps]:
-                for per in permutations(U, LENGTH_MEAS[Eps]):  # Possible qubits loop
+        for Eps in AM:  # Admissible measurements
+            if len(U) >= LENGTH_MEAS[Eps]:  # Only enters if there is enough qubits to measure
+                for per in permutations(U, LENGTH_MEAS[Eps]):  # Check each permutation between the remained qubits
                     per = list(per)
+                    connected = True
                     if LENGTH_MEAS[Eps] >= 2:
                         Tper = [int(T[per[0]]), int(T[per[1]])]
-                    else:
-                        Tper = 0
+                        connected = Tper in WC  # Connectivity check
 
-                    if (Tper in WC) or (Tper == 0):  # Connectivity check
+                    if connected:
                         # Compatibility check
                         if (tuple(Vi[per]) in COMP_LIST[Eps]) and (tuple(Vj[per]) in COMP_LIST[Eps]):
                             UMi.append((Eps, per))
@@ -523,10 +517,10 @@ def grouping_entangled(labels: np.ndarray, pauli_graph: nx.Graph, connectivity_g
     """
     n, N = np.shape(labels)
 
-    if connectivity_graph is None:
+    if connectivity_graph is None:  # If no connectivity, all-to-all assumed
         connectivity_graph = nx.Graph()
         connectivity_graph.add_edges_from(list(permutations(list(range(N)), 2)))
-    elif type(connectivity_graph) is list:
+    elif type(connectivity_graph) is list:  # If a list is provided, construct the graph
         temp = connectivity_graph
         connectivity_graph = nx.Graph()
         connectivity_graph.add_edges_from(temp)
@@ -534,21 +528,21 @@ def grouping_entangled(labels: np.ndarray, pauli_graph: nx.Graph, connectivity_g
     if len(connectivity_graph.nodes) < N:
         raise Exception('The number of qubits in the device is not high enough. Use a bigger device.')
 
-    # Qubits in descending order of compatible measurements
+    # Paulis in descending order of compatible measurements
     SV = sorted(pauli_graph.degree, key=lambda x: x[1], reverse=True)
     SV = [x[0] for x in SV]
 
     if transpiled_order:
         C, _, _ = compatible_measurements(labels, one_qubit=False)
-        T = list(transpile(connectivity_graph, C, connected_graph))
+        T = transpile(connectivity_graph, C, connected_graph)
         _, CM, CQ = compatible_measurements(labels, T=T, connectivity_graph=connectivity_graph)
 
         AM = list(np.argsort(CM[1:])[::-1] + 1)
         OQ = list(np.argsort(CQ)[::-1])
     else:
-        AM = [4, 6, 7, 8, 9, 5, 1, 2, 3]
-        OQ = list(range(N))
-        T = list(range(N))
+        AM = [4, 6, 7, 8, 9, 5, 1, 2, 3]  # Preference the 2-qubit measurements over the 1-qubit ones
+        OQ = list(range(N))  # default order for the qubits
+        T = list(range(N))  # Naive theoretical physical qubit with T[i] = i
 
     groups = []
     measurements = []
@@ -556,26 +550,25 @@ def grouping_entangled(labels: np.ndarray, pauli_graph: nx.Graph, connectivity_g
     pbar = tqdm(total=n, desc='Grouping entangled', disable=not print_progress)
     while len(SV) > 0:
         pbar.update()
-        i = SV.pop(0)  # We run the Pauli strings in a decreasing order of CQ.
+        i = SV.pop(0)  # Run the Pauli strings in decreasing order of CQ
         Mi = []
         GroupMi = [i]
-        for j in SV:  # We try to make the group of the string i as big as possible
+        for j in SV:  # Try to make the group of the string i as large as possible
             Mi, S = measurement_assignment(labels[i], labels[j], Mi, AM, connectivity_graph, OQ, T)
-            if S:
+            if S:  # Success grouping label i and j
                 pbar.update()
                 GroupMi.append(j)
 
-        for index in GroupMi[1:]:
+        for index in GroupMi[1:]:  # Remove grouped Pauli labels
             SV.remove(index)
 
-        QWM = list(range(N))  # Qubits without a measurement assigned by Mi.
-        for PM in Mi:
-            for s in PM[1]:
-                QWM.remove(s)
+        QWM = list(range(N))  # If a qubit has no measurement assigned, then use 1-qubit measurement
+        for partial_measurement in Mi:
+            for qubit in partial_measurement[1]:
+                QWM.remove(qubit)
 
-        for q in QWM:
-            TPBq = max(labels[GroupMi, q])
-            Mi.append((TPBq, [q]))
+        for qubit in QWM:
+            Mi.append((max(labels[GroupMi, qubit]), [qubit]))
 
         groups.append(GroupMi)
         measurements.append(Mi)
@@ -611,7 +604,7 @@ def grouping_tpb(labels: np.ndarray, print_progress: bool = False, pauli_graph: 
     if pauli_graph is None:
         pauli_graph = build_pauli_graph(labels, print_progress=print_progress)
 
-    # Graph coloring code of networkx. By default, it uses LDFC strategy.
+    # Graph coloring code of networkx. By default, it uses LDFC strategy
     coloring = nx.coloring.greedy_color(pauli_graph)
 
     # Obtain grouped Pauli labels
@@ -644,9 +637,9 @@ def test_grouping_paulis(labels: np.ndarray, groups: List[List[int]]) -> bool:
     If the test passes, True is returned. Otherwise, and exception is raised.
     """
 
-    n_labels = len(labels)
+    n = len(labels)
 
-    pauli_indices = list(range(n_labels))
+    pauli_indices = list(range(n))
     index = None
     try:
         for group in groups:
@@ -659,7 +652,7 @@ def test_grouping_paulis(labels: np.ndarray, groups: List[List[int]]) -> bool:
     if len(pauli_indices) > 0:
         raise Exception('The following Pauli indices are not measured {}'.format(pauli_indices))
 
-    return True
+    return True  # Test passed
 
 
 def test_grouping_measurements(labels: np.ndarray, groups: List[List[int]],
@@ -690,12 +683,12 @@ def test_grouping_measurements(labels: np.ndarray, groups: List[List[int]],
             for grouped_label in grouped_labels:  # Check each grouped Pauli label
                 if list(grouped_label[qubits]) == [0] * len(qubits):  # If the identity is applied, continue
                     continue
-                # If the Pauli not compatible with measurement
+                # If the Pauli is not compatible with the assigned measurement
                 elif tuple(grouped_label[qubits]) not in COMP_LIST[index_measure]:
                     raise Exception(
                         'The Pauli label {} is incompatible with the measurement {} over the qubit(s) {}'.format(
                             grouped_label, index_measure, *qubits))
-    return True
+    return True  # Test passed
 
 
 def test_connectivity(measurements: List[List[PartialMeasurement]], T: List[int],
@@ -725,7 +718,7 @@ def test_connectivity(measurements: List[List[PartialMeasurement]], T: List[int]
                 if phy_qubits not in connectivity:
                     raise Exception('Entangled measurement between non-connected '
                                     'qubits {} and {}'.format(phy_qubits[0], phy_qubits[1]))
-    return True
+    return True  # Test passed
 
 
 def pauli_labels_numbers(labels: Union[np.ndarray, List[str], MoleculeType],
@@ -744,9 +737,10 @@ def pauli_labels_numbers(labels: Union[np.ndarray, List[str], MoleculeType],
             coeffs = [0] * len(labels)
     elif (type(labels) is TaperedPauliSumOp) or (type(labels) is PauliSumOp):
         labels, coeffs = extract_Paulis(labels)
+        labels = string2number(labels)
     else:
-        raise Exception('labels type not implemented. Please, use a list of strings, a numpy array with the number'
-                        ' convention for each Pauli string, a PauliSumOp or a TaperedPauliSumOp')
+        raise Exception('Pauli Labels\' type not implemented. Please, use a list of strings, a numpy array within'
+                        ' the number convention, a PauliSumOp, or a TaperedPauliSumOp')
 
     return labels, coeffs
 
@@ -758,7 +752,7 @@ class Grouping:
                  transpiled_order: bool = True, pauli_graph: Optional[nx.Graph] = None, load: Optional[str] = None,
                  coeffs: Optional[Union[List[complex], np.ndarray]] = None) -> None:
         if load is None:
-            self._labels, self._coeffs = pauli_labels_numbers(labels, coeffs)
+            self._labels, self._coeffs = pauli_labels_numbers(labels, coeffs)  # Reformat labels and obtain coeffs
 
             self._connectivity = connectivity
             self._tests = tests
@@ -793,7 +787,7 @@ class Grouping:
 
             if self._connectivity is None:
                 self._connectivity = permutations(range(self._n_qubits), 2)
-            self._connectivity = [list(x) for x in self._connectivity]  # Ensure each pair of qubits is a list
+            self._connectivity = [list(x) for x in self._connectivity]
 
             self._connectivity_graph = nx.Graph()
             self._connectivity_graph.add_edges_from(self._connectivity)
@@ -805,13 +799,13 @@ class Grouping:
         self._check_pauli_graph()
 
         t0 = time()
-        if self._entangled:
+        if self._entangled:  # Use entangled measurements
             self.groups, self.measurements, self.T = grouping_entangled(self._labels, self._pauli_graph,
                                                                         connectivity_graph=self._connectivity_graph,
                                                                         connected_graph=self._connected_graph,
                                                                         print_progress=self._print_progress,
                                                                         transpiled_order=self._transpiled_order)
-        else:
+        else:  # Only 1-qubit measurements
             self.groups, self.measurements = grouping_tpb(self._labels, print_progress=self._print_progress,
                                                           pauli_graph=self._pauli_graph)
             self.T = list(range(self._n_qubits))
