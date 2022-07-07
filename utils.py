@@ -2,6 +2,8 @@ from typing import List
 import numpy as np
 import networkx as nx
 import copy
+import joblib
+import contextlib
 
 
 def random_labels(n: int, N: int) -> np.ndarray:
@@ -70,3 +72,23 @@ def add_edge(G: nx.Graph, node1: int, node2: int) -> None:
         G.add_edge(node1, node2, weight=last_weight + 1)
     else:
         G.add_node(node1)
+
+
+@contextlib.contextmanager
+def tqdm_joblib(tqdm_object):
+    """
+    Context manager to patch joblib to report into tqdm progress bar given as argument. Code extracted from the
+    stack overflow response: https://stackoverflow.com/a/58936697/8237804
+    """
+    class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
+        def __call__(self, *args, **kwargs):
+            tqdm_object.update(n=self.batch_size)
+            return super().__call__(*args, **kwargs)
+
+    old_batch_callback = joblib.parallel.BatchCompletionCallBack
+    joblib.parallel.BatchCompletionCallBack = TqdmBatchCompletionCallback
+    try:
+        yield tqdm_object
+    finally:
+        joblib.parallel.BatchCompletionCallBack = old_batch_callback
+        tqdm_object.close()
