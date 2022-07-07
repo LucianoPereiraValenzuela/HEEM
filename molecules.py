@@ -14,7 +14,7 @@ MoleculeType = Union[PauliSumOp, TaperedPauliSumOp]
 
 def extract_Paulis(qubit_op: MoleculeType) -> Tuple[List[str], List[complex]]:
     """
-    Extract the Pauli labels, and the coefficients for each one from a given qubit operator.
+    Extract the Pauli labels and the coefficients from a given qubit operator.
     Parameters
     ----------
     qubit_op: TaperedPauliSumOp:
@@ -67,6 +67,7 @@ def general_molecule(molecule: str, freeze_core: bool, orbitals_remove: Union[No
 
     try:
         driver = PySCFDriver(molecule)
+    # TODO: Use more concise exception
     except Exception:
         from qiskit_nature.drivers.second_quantization.pyquanted import PyQuanteDriver
         driver = PyQuanteDriver(molecule)
@@ -77,7 +78,6 @@ def general_molecule(molecule: str, freeze_core: bool, orbitals_remove: Union[No
     # Generate the second-quantized operators
     second_q_ops = problem.second_q_ops()
 
-    # Hamiltonian
     main_op = second_q_ops[0]
 
     # Set up the mapper and qubit converter
@@ -142,11 +142,11 @@ def H2(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
         return qubit_op
 
 
-def LiH(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
-        orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
-        mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+def BeH2(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
+         orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
+         mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
     """
-    Qiskit operator for the LiH molecule.
+    Qiskit operator for the BeH2 molecule.
 
     Parameters
     ----------
@@ -187,30 +187,56 @@ def compute_molecule(molecule_name: str, distance: Optional[float] = None, freez
                      orbitals_remove: Optional[List[str]] = None, initial_state: Optional[bool] = False,
                      mapper_type: Optional[str] = None, load: Optional[bool] = False) -> Union[
     MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+    """
+    Compute the molecule qubit operator. If previously compute, it can also be loaded. If desired, the initial Hartree
+    Fock circuit can be returned.
+    Parameters
+    ----------
+    molecule_name: str
+        Molecule's name. This argument is case-insensitive.
+    distance: float (optional, default=None)
+        Distance between molecules. This parameter is only used in the most simple molecules. If not provided, the
+        equilibrium distance is used.
+    freeze_core
+    orbitals_remove
+    initial_state
+    mapper_type
+    load: bool (default=False)
+        If True, search for the precomputed molecule data at ../data/molecules/[molecule_name].pickle. If the data is
+        not found, them compute the molecule.
+
+    (For more info about other arguments, see at the documentation of general_molecule() )
+
+    Returns
+    -------
+    qubit_op: TaperedPauliSumOp
+        Qubit operator for the molecule
+    init_state: HartreeFock (only if initial_state=True)
+        Quantum circuit with the initial state given by Hartree Fock.
+    """
     if load:
         try:
-            file_name = '../data/molecules/' + molecule_name + '.npy'
+            file_name = '../data/molecules/' + molecule_name + '.pickle'
             with open(file_name, 'rb') as file:
                 qubit_op = pickle.load(file)
             print('Molecule loaded')
             if initial_state:
-                file_name = '../data/molecules/' + molecule_name + '_initial_state' + '.npy'
+                file_name = '../data/molecules/' + molecule_name + '_initial_state' + '.pickle'
                 with open(file_name, 'rb') as file:
                     initial_state = pickle.load(file)
-
                 return qubit_op, initial_state
             else:
                 return qubit_op
         except KeyError:
             print('Molecule not found, computing it ...')
 
-        molecule_name = molecule_name.lower()
-        # TODO: Include molecules: [BeH2, H2O, CH4, C2H2, CH3OH, C2H6]
-        if molecule_name == 'h2':
-            return H2(distance=distance, freeze_core=freeze_core, orbitals_remove=orbitals_remove,
-                      initial_state=initial_state, mapper_type=mapper_type)
-        elif molecule_name == 'lih':
-            return LiH(distance=distance, freeze_core=freeze_core, orbitals_remove=orbitals_remove,
-                       initial_state=initial_state, mapper_type=mapper_type)
-        else:
-            raise Exception('The molecule {} is not implemented.'.format(molecule_name))
+    molecule_name = molecule_name.lower()
+    # TODO: Include molecules: [LiH, H2O, CH4, C2H2, CH3OH, C2H6]
+    if molecule_name == 'h2':
+        return H2(distance=distance, freeze_core=freeze_core, orbitals_remove=orbitals_remove,
+                  initial_state=initial_state, mapper_type=mapper_type)
+    elif molecule_name == 'beh2':
+        return BeH2(distance=distance, freeze_core=freeze_core, orbitals_remove=orbitals_remove,
+                    initial_state=initial_state, mapper_type=mapper_type)
+    else:
+        raise Exception('The molecule {} is not implemented.'.format(molecule_name))
