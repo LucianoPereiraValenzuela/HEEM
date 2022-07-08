@@ -2,37 +2,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import Optional, Union
-
-
-def question(name: Optional[str] = None, message: Optional[str] = None) -> bool:
-    """
-    Make a question and return True or False depending on the answer of the user. There is only two possible answers
-    y -> yes or	n -> no. If the answer is none of this two the question is repeated until a good answer is given.
-    If not message is provided, then the default overwriting file message is printed, with the file name provided.
-
-    Parameter
-    ----------
-    name: str (optional, default=None)
-        Name of the file to overwrite
-    message: str (optional, default=None)
-        Message to print
-    Return
-    ------
-    (Bool)
-        Answer given by the user
-    """
-    if message is None:
-        message = 'Do you want to overwrite the file ({})?'.format(name)
-
-    temp = input(message + '  [y]/n:').lower()  # Ask for an answer by keyword input
-
-    if temp == 'y' or temp == '':
-        return True
-    elif temp == 'n':
-        return False
-    else:  # If the answer is not correct
-        print('I didn\'t understand your answer.')
-        return question(name=name, message=message)  # The function will repeat until a correct answer if provided
+from utils import question
 
 
 def save_figure(fig: plt.Figure, file_dic: str, dpi: Optional[int] = 600):

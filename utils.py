@@ -9,9 +9,40 @@ import time
 
 from qiskit import execute
 from qiskit.circuit import QuantumCircuit
-from qiskit.providers import JobStatus, BaseBackend
+from qiskit.providers import JobStatus
 from qiskit.providers.ibmq.job import IBMQJob
-from qiskit.providers.backend import Backend
+from qiskit.providers.ibmq import IBMQBackend
+
+
+def question(name: Optional[str] = None, message: Optional[str] = None) -> bool:
+    """
+    Make a question and return True or False depending on the answer of the user. There is only two possible answers
+    y -> yes or	n -> no. If the answer is none of this two the question is repeated until a good answer is given.
+    If not message is provided, then the default overwriting file message is printed, with the file name provided.
+
+    Parameter
+    ----------
+    name: str (optional, default=None)
+        Name of the file to overwrite
+    message: str (optional, default=None)
+        Message to print
+    Return
+    ------
+    (Bool)
+        Answer given by the user
+    """
+    if message is None:
+        message = 'Do you want to overwrite the file ({})?'.format(name)
+
+    temp = input(message + '  [y]/n:').lower()  # Ask for an answer by keyword input
+
+    if temp == 'y' or temp == '':
+        return True
+    elif temp == 'n':
+        return False
+    else:  # If the answer is not correct
+        print('I didn\'t understand your answer.')
+        return question(name=name, message=message)  # The function will repeat until a correct answer if provided
 
 
 def random_labels(n: int, N: int) -> np.ndarray:
@@ -146,25 +177,24 @@ def check_status_jobs(running: List[Tuple[int, IBMQJob]], n_batches: int, verbos
             return False, j, index
 
 
-def send_job_backend(backend: Union[BaseBackend, Backend], circuits_batch: List[QuantumCircuit],
-                     index: Optional[int] = 1, n_batches: Optional[int] = 1,
-                     job_tag: Optional[Union[str, List[str]]] = None, verbose: Optional[bool] = True,
-                     **kwargs_run: dict) -> IBMQJob:
+def send_job_backend(backend: IBMQBackend, circuits_batch: List[QuantumCircuit], index: Optional[int] = 0,
+                     n_batches: Optional[int] = 1, job_tags: Optional[Union[str, List[str]]] = None,
+                     verbose: Optional[bool] = True, **kwargs_run: dict) -> IBMQJob:
     """
     Send a job to ibm with a series of circuits.
     Parameters
     ----------
-    backend: BaseBackend or Backend
+    backend: IBMQBackend
         IBMQ backend to send the job
     circuits_batch: list(QuantumCircuits)
         Circuits to execute in the backend
-    index: int (optional, default=1)
+    index: int (optional, default=0)
         If multiple jobs are going to be sent to IBM, then use the name of the job to write the job index.
     n_batches: int (optional, default=1)
         if multiple jobs are going to be sent to IBM, then use the name of the job to write the total number of jobs.
     kwargs_run: dict (optional, default=None)
         Optional arguments for execute the circuits
-    job_tag: str (optional, default=None)
+    job_tags: str (optional, default=None)
         Job tag.
     verbose: bool (optional, default=True)
         If True, print when the job is sent, together with the job index and the total number of jobs to be sent.
@@ -175,23 +205,22 @@ def send_job_backend(backend: Union[BaseBackend, Backend], circuits_batch: List[
         Job sent to IBMQ.
     """
 
-    job = execute(circuits_batch, backend, **kwargs_run)
-    if job_tag is not None:
-        if type(job_tag) is not list:
-            job_tag = [job_tag]
+    if job_tags is not None:
+        if type(job_tags) is not list:
+            job_tags = [job_tags]
 
-        # TODO: Can be tags and name included in the execute command?
-        job.update_tags(additional_tags=job_tag)
+    job_name = '{}/{}'.format(index + 1, n_batches)
 
-    job.update_name('{}/{}'.format(index + 1, n_batches))
+    job = execute(circuits_batch, backend, **{'job_name': job_name, 'job_tags': job_tags}, **kwargs_run)
+
     if verbose:
         print('Job {}/{} sent to IBMQ'.format(index + 1, n_batches))
 
     return job
 
 
-def send_ibmq_parallel(backend: Union[BaseBackend, Backend], circuits: List[QuantumCircuit],
-                       job_tag: Optional[Union[str, List[str]]] = None, verbose: Optional[bool] = True,
+def send_ibmq_parallel(backend: IBMQBackend, circuits: List[QuantumCircuit],
+                       job_tags: Optional[Union[str, List[str]]] = None, verbose: Optional[bool] = True,
                        progress_bar: Optional[bool] = False, circuits_batch_size: Optional[int] = 300,
                        n_jobs_parallel: Optional[int] = 5, waiting_time: Optional[int] = 20, **kwargs_run: dict) -> \
         List[IBMQJob]:
@@ -200,11 +229,11 @@ def send_ibmq_parallel(backend: Union[BaseBackend, Backend], circuits: List[Quan
 
     Parameters
     ----------
-    backend: BaseBackend or Backend
+    backend: IBMQBackend
         IBMQ backend to send the job
     circuits: list(QuantumCircuit)
         Circuits to be run
-    job_tag: str or list(str) (optional, default=None)
+    job_tags: str or list(str) (optional, default=None)
         Tag for the job. If multiple tags, they can be added in a list.
     verbose: bool (optional, default=True)
         If True, write the progress as the jobs are sent, completed, cancelled, ...
@@ -212,8 +241,6 @@ def send_ibmq_parallel(backend: Union[BaseBackend, Backend], circuits: List[Quan
         If True, print a progress bar as the jobs are completed.
     circuits_batch_size: int (optional, default=300)
         Maximum number of circuits in the batches. This can be limited by the backend options.
-        # TODO: Check if we can extract this information from backend, so
-        #  circuits_batch_size = max(backend.some_function(), circuits_batch_size)
     n_jobs_parallel: int (optional, default=5)
         Maximum number of jobs to be run in parallel.
     waiting_time: int (optional, default=20
@@ -232,13 +259,27 @@ def send_ibmq_parallel(backend: Union[BaseBackend, Backend], circuits: List[Quan
         .
         job_-1 -> [..., circuits[-1]]
     """
-    # TODO: Maybe we can check if there is some running jobs in the backend, and ask the user to cancel them.
+
+    n_active_jobs = backend.job_limit().active_jobs
+    if n_active_jobs != 0:
+        delete_jobs = question(
+            message='There are {} active jobs in the backed. Do you want to cancel them?'.format(n_active_jobs))
+
+        if delete_jobs:
+            for job in backend.active_jobs(limit=n_active_jobs):
+                job.cancel()
+
+    max_experiments = backend.configuration().max_experiments
+    circuits_batch_size = min(circuits_batch_size, max_experiments)
 
     n_circuits = len(circuits)
     n_batches = int(np.ceil(n_circuits / circuits_batch_size))  # Number of circuits batches to sent
 
+    max_jobs = backend.job_limit().maximum_jobs
     if n_jobs_parallel == -1:
         n_jobs_parallel = n_batches
+
+    n_jobs_parallel = min(max_jobs, n_jobs_parallel)
 
     pbar = tqdm(total=n_batches, desc='Jobs completed', disable=not progress_bar)
 
@@ -255,7 +296,7 @@ def send_ibmq_parallel(backend: Union[BaseBackend, Backend], circuits: List[Quan
 
     # Send the initial jobs
     for i, index in enumerate(indices[:n_jobs_parallel]):
-        job = send_job_backend(backend, circuits[index[0]:index[1]], index=i, n_batches=n_batches, job_tag=job_tag,
+        job = send_job_backend(backend, circuits[index[0]:index[1]], index=i, n_batches=n_batches, job_tags=job_tags,
                                verbose=verbose, **kwargs_run)
         running_jobs.append((i, job))
 
@@ -276,14 +317,14 @@ def send_ibmq_parallel(backend: Union[BaseBackend, Backend], circuits: List[Quan
                 if max_id_sent + 1 < n_batches:  # If there is still some job to be sent
                     max_id_sent += 1
                     job = send_job_backend(backend, circuits[indices[max_id_sent][0]:indices[max_id_sent][1]],
-                                           index=max_id_sent, n_batches=n_batches, job_tag=job_tag, verbose=verbose,
+                                           index=max_id_sent, n_batches=n_batches, job_tags=job_tags, verbose=verbose,
                                            **kwargs_run)
 
                     running_jobs.append((max_id_sent, job))
             else:  # Resend the failed job
                 running_jobs.pop(running_id)
                 job = send_job_backend(backend, circuits[indices[job_id][0]:indices[job_id][1]], index=job_id,
-                                       n_batches=n_batches, job_tag=job_tag, verbose=verbose, **kwargs_run)
+                                       n_batches=n_batches, job_tags=job_tags, verbose=verbose, **kwargs_run)
                 running_jobs.append((job_id, job))
         else:
             time.sleep(waiting_time)  # Wait some time for the next status, so IBMQ do not detect lots of petitions
