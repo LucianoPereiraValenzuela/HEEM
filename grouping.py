@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from qiskit.compiler import transpile as transpile_qiskit
 from qiskit.opflow.primitive_ops import TaperedPauliSumOp, PauliSumOp
 
-from molecules import extract_Paulis
+from molecules import extract_paulis
 from utils import string2number, number2string, add_edge
 
 """
@@ -736,7 +736,7 @@ def pauli_labels_numbers(labels: Union[np.ndarray, List[str], MoleculeType],
         if coeffs is None:
             coeffs = [0] * len(labels)
     elif (type(labels) is TaperedPauliSumOp) or (type(labels) is PauliSumOp):
-        labels, coeffs = extract_Paulis(labels)
+        labels, coeffs = extract_paulis(labels)
         labels = string2number(labels)
     else:
         raise Exception('Pauli Labels\' type not implemented. Please, use a list of strings, a numpy array within'
