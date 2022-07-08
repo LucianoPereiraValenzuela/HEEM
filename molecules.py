@@ -8,11 +8,12 @@ from qiskit_nature.problems.second_quantization.electronic import ElectronicStru
 from qiskit_nature.mappers.second_quantization import ParityMapper, JordanWignerMapper, BravyiKitaevMapper
 from qiskit_nature.converters.second_quantization.qubit_converter import QubitConverter
 from qiskit.opflow.primitive_ops import TaperedPauliSumOp, PauliSumOp
+from qiskit.exceptions import MissingOptionalLibraryError
 
 MoleculeType = Union[PauliSumOp, TaperedPauliSumOp]
 
 
-def extract_Paulis(qubit_op: MoleculeType) -> Tuple[List[str], List[complex]]:
+def extract_paulis(qubit_op: MoleculeType) -> Tuple[List[str], List[complex]]:
     """
     Extract the Pauli labels and the coefficients from a given qubit operator.
     Parameters
@@ -67,8 +68,7 @@ def general_molecule(molecule: str, freeze_core: bool, orbitals_remove: Union[No
 
     try:
         driver = PySCFDriver(molecule)
-    # TODO: Use more concise exception
-    except Exception:
+    except MissingOptionalLibraryError:
         from qiskit_nature.drivers.second_quantization.pyquanted import PyQuanteDriver
         driver = PyQuanteDriver(molecule)
 
