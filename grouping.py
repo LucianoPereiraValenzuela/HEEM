@@ -746,7 +746,7 @@ def pauli_labels_numbers(labels: Union[np.ndarray, List[str], MoleculeType],
 
 
 class Grouping:
-    def __init__(self, labels: Optional[Union[np.ndarray, List[str]]] = None,
+    def __init__(self, labels: Optional[Union[np.ndarray, List[str], MoleculeType]] = None,
                  connectivity: Optional[Union[List[int], Tuple[int, int]]] = None, tests: bool = True,
                  connected_graph: bool = True, print_progress: bool = True, method: str = 'HEEM',
                  transpiled_order: bool = True, pauli_graph: Optional[nx.Graph] = None, load: Optional[str] = None,
