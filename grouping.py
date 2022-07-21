@@ -227,8 +227,7 @@ def compatible_measurements(labels: np.ndarray, T: Optional[Union[List[int], Ite
                 n_counts = compatible_measurements_1q(measurement, labels[:, i])
                 CQ[i] += n_counts
                 CM[measurement] += n_counts
-
-    # TODO: Is it possible that CM gives preference to one-qubit measurements over two-qubit ones?
+                
     return C, CM, CQ
 
 
