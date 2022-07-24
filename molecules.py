@@ -183,6 +183,189 @@ def BeH2(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
         return qubit_op
 
 
+def LiH(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
+         orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
+         mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+   """
+    Qiskit operator for the LiH molecule.
+
+    Parameters
+    ----------
+    distance: float (optional, default=None)
+        If not, 1.5474 is assumed.
+    freeze_core
+    orbitals_remove
+    initial_state
+    mapper_type
+
+    (For more info about other arguments, see at the documentation of general_molecule() )
+
+    Returns
+    -------
+    qubit_op: TaperedPauliSumOp
+        Qubit operator for the molecule
+    init_state: HartreeFock (only if initial_state=True)
+        Quantum circuit with the initial state given by Hartree Fock.
+    """
+
+    if distance is None:
+        distance = 1.5474
+
+    if remove_orbitals is None:
+        remove_orbitals = [3, 4]
+
+    molecule = 'Li 0.0 0.0 0.0; H 0.0 0.0 ' + str(distance)
+
+    qubit_op, init_state = general_molecule(molecule, freeze_core, orbitals_remove, mapper_type)
+
+    if initial_state:
+        return qubit_op, init_state
+    else:
+        return qubit_op
+
+
+def H2O(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
+         orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
+         mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+   """
+    Qiskit operator for the H2O molecule.
+
+    Parameters
+    ----------
+    distance: float (optional, default=None)
+        If not, 0.9584 is assumed.
+    freeze_core
+    orbitals_remove
+    initial_state
+    mapper_type
+
+    (For more info about other arguments, see at the documentation of general_molecule() )
+
+    Returns
+    -------
+    qubit_op: TaperedPauliSumOp
+        Qubit operator for the molecule
+    init_state: HartreeFock (only if initial_state=True)
+        Quantum circuit with the initial state given by Hartree Fock.
+    """
+
+    if distance is None:
+        distance = 0.9584
+
+    if remove_orbitals is None:
+        remove_orbitals = [4]
+
+    x = distance * np.sin(np.deg2rad(104.45 / 2))
+    y = distance * np.cos(np.deg2rad(104.45 / 2))
+
+    molecule = 'O 0.0 0.0 0.0; H ' + str(x) + ' ' + str(y) + ' 0.0; H -' + str(x) + ' ' + str(y) + ' 0.0'
+
+    qubit_op, init_state = general_molecule(molecule, freeze_core, orbitals_remove, mapper_type)
+
+    if initial_state:
+        return qubit_op, init_state
+    else:
+        return qubit_op
+
+    
+def CH4(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
+         orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
+         mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+   """
+    Qiskit operator for the CH4 molecule.
+
+    Parameters
+    ----------
+    distance: float (optional, default=None)
+        If not, 0.9573 is assumed.
+    freeze_core
+    orbitals_remove
+    initial_state
+    mapper_type
+
+    (For more info about other arguments, see at the documentation of general_molecule() )
+
+    Returns
+    -------
+    qubit_op: TaperedPauliSumOp
+        Qubit operator for the molecule
+    init_state: HartreeFock (only if initial_state=True)
+        Quantum circuit with the initial state given by Hartree Fock.
+    """
+
+    if distance is None:
+        distance = 0.9573
+
+    if remove_orbitals is None:
+        remove_orbitals = [7,8]
+
+    theta = 109.5
+    r_inf = distance * np.cos(np.deg2rad(theta - 90))
+    height_low = distance * np.sin(np.deg2rad(theta - 90))
+
+    H1 = np.array([0, 0, distance])
+    H2 = np.array([r_inf, 0, -height_low])
+    H3 = np.array([-r_inf * np.cos(np.pi / 3), r_inf * np.sin(np.pi / 3), -height_low])
+    H4 = np.array([-r_inf * np.cos(np.pi / 3), -r_inf * np.sin(np.pi / 3), -height_low])
+
+    molecule = 'O 0 0 0; H {}; H {}; H {}; H {}'.format(str(H1)[1:-1], str(H2)[1:-1], str(H3)[1:-1], str(H4)[1:-1])
+
+    qubit_op, init_state = general_molecule(molecule, freeze_core, orbitals_remove, mapper_type)
+
+    if initial_state:
+        return qubit_op, init_state
+    else:
+        return qubit_op
+
+    
+def C2H2(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
+         orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
+         mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+   """
+    Qiskit operator for the C2H2 molecule.
+
+    Parameters
+    ----------
+    distance: float (optional, default=None)
+    freeze_core
+    orbitals_remove
+    initial_state
+    mapper_type
+
+    (For more info about other arguments, see at the documentation of general_molecule() )
+
+    Returns
+    -------
+    qubit_op: TaperedPauliSumOp
+        Qubit operator for the molecule
+    init_state: HartreeFock (only if initial_state=True)
+        Quantum circuit with the initial state given by Hartree Fock.
+    """
+
+    if distance is None:
+        distance = [1.2, 1.06]
+
+    if remove_orbitals is None:
+        remove_orbitals = [11]
+
+    #   H(1)  C(1)  C(2)  H(2)
+
+    H1 = str(np.array([0, 0, 0]))[1:-1]
+    C1 = str(np.array([0, 0, distance[1]]))[1:-1]
+    C2 = str(np.array([0, 0, distance[1] + distance[0]]))[1:-1]
+    H2 = str(np.array([0, 0, 2 * distance[1] + distance[0]]))[1:-1]
+
+    molecule = 'H {}; C {}; C {}; H {}'.format(H1, C1, C2, H2)
+
+    qubit_op, init_state = general_molecule(molecule, freeze_core, orbitals_remove, mapper_type)
+
+    if initial_state:
+        return qubit_op, init_state
+    else:
+        return qubit_op
+
+
+    
 def compute_molecule(molecule_name: str, distance: Optional[float] = None, freeze_core: Optional[bool] = True,
                      orbitals_remove: Optional[List[str]] = None, initial_state: Optional[bool] = False,
                      mapper_type: Optional[str] = None, load: Optional[bool] = False) -> Union[
