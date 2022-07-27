@@ -1,5 +1,6 @@
 from typing import Union, List, Optional, Tuple
 import pickle
+import numpy as np
 
 from qiskit_nature.drivers.second_quantization import PySCFDriver
 from qiskit_nature.transformers.second_quantization.electronic import FreezeCoreTransformer
@@ -132,6 +133,7 @@ def H2(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
     if distance is None:
         distance = .761
 
+    #   H - H
     molecule = 'H .0 .0 .0; H .0 .0 ' + str(distance)
 
     qubit_op, init_state = general_molecule(molecule, freeze_core, orbitals_remove, mapper_type)
@@ -173,6 +175,7 @@ def BeH2(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
     if orbitals_remove is None:
         orbitals_remove = [3, 6]
 
+    #  H - Be - H
     molecule = 'H 0.0 0.0 -' + str(distance) + '; Be 0.0 0.0 0.0; H 0.0 0.0 ' + str(distance)
 
     qubit_op, init_state = general_molecule(molecule, freeze_core, orbitals_remove, mapper_type)
@@ -240,3 +243,130 @@ def compute_molecule(molecule_name: str, distance: Optional[float] = None, freez
                     initial_state=initial_state, mapper_type=mapper_type)
     else:
         raise Exception('The molecule {} is not implemented.'.format(molecule_name))
+
+
+def CH3OH(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
+          orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
+          mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+    """
+    Qiskit operator for the BeCH3OH molecule.
+
+    Parameters
+    ----------
+    distance: float (optional, default=None)
+        Not used
+    freeze_core
+    orbitals_remove
+    initial_state
+    mapper_type
+
+    (For more info about other arguments, see at the documentation of general_molecule() )
+
+    Returns
+    -------
+    qubit_op: TaperedPauliSumOp
+        Qubit operator for the molecule
+    init_state: HartreeFock (only if initial_state=True)
+        Quantum circuit with the initial state given by Hartree Fock.
+    """
+
+    # if distance is None:
+    #     distance = 1.339
+
+    # TODO: Check which orbitals can be removed.
+    # if orbitals_remove is None:
+    #     orbitals_remove = [3, 6]
+
+    #   H(1) \
+    #   H(2) - C - O - H(4)
+    #   H(3) /
+
+    d1 = 0.95
+    d2 = 0.5
+    theta1 = 109.5
+    theta2 = 45
+
+    r_inf = d1 * np.cos(np.deg2rad(theta1 - 90))
+    height_low = d1 * np.sin(np.deg2rad(theta1 - 90))
+
+    H1 = np.array([r_inf, 0, -height_low])
+    H2 = np.array([-r_inf * np.cos(np.pi / 3), r_inf * np.sin(np.pi / 3), -height_low])
+    H3 = np.array([-r_inf * np.cos(np.pi / 3), -r_inf * np.sin(np.pi / 3), -height_low])
+    C = np.array([0, 0, 0])
+    O = np.array([0, 0, height_low])
+    H4 = O + np.array([0, d2 * np.sin(np.deg2rad(theta2)), d2 * np.cos(np.deg2rad(theta2))])
+
+    molecule = 'H {}; H {}; H {}; C {}; O {}; H {}'.format(str(H1)[1:-1], str(H2)[1:-1], str(H3)[1:-1], str(C)[1:-1],
+                                                           str(O)[1:-1], str(H4)[1:-1])
+
+    qubit_op, init_state = general_molecule(molecule, freeze_core, orbitals_remove, mapper_type)
+
+    if initial_state:
+        return qubit_op, init_state
+    else:
+        return qubit_op
+
+
+def C2H6(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
+         orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
+         mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+    """
+    Qiskit operator for the C2H6 molecule.
+
+    Parameters
+    ----------
+    distance: float (optional, default=None)
+        Not used
+    freeze_core
+    orbitals_remove
+    initial_state
+    mapper_type
+
+    (For more info about other arguments, see at the documentation of general_molecule() )
+
+    Returns
+    -------
+    qubit_op: TaperedPauliSumOp
+        Qubit operator for the molecule
+    init_state: HartreeFock (only if initial_state=True)
+        Quantum circuit with the initial state given by Hartree Fock.
+    """
+
+    # if distance is None:
+    #     distance = 1.339
+
+    # TODO: Check which orbitals can be removed.
+    # if orbitals_remove is None:
+    #     orbitals_remove = [3, 6]
+
+    #   H(1) \             / H(4)
+    #   H(2) - C(1) - C(2) - H(5)
+    #   H(3) /             \ H(6)
+
+    d1 = 0.95
+    d2 = 2
+    theta = 109.3
+
+    r_inf = d1 * np.cos(np.deg2rad(theta - 90))
+    height_low = d1 * np.sin(np.deg2rad(theta - 90))
+
+    H1 = np.array([r_inf, 0, -height_low])
+    H2 = np.array([-r_inf * np.cos(np.pi / 3), r_inf * np.sin(np.pi / 3), -height_low])
+    H3 = np.array([-r_inf * np.cos(np.pi / 3), -r_inf * np.sin(np.pi / 3), -height_low])
+    C1 = np.array([0, 0, 0])
+
+    C2 = C1 + np.array([0, 0, d2])
+    H4 = H1 * np.array([-1, 1, 1]) + C2
+    H5 = H2 * np.array([-1, 1, 1]) + C2
+    H6 = H3 * np.array([-1, 1, 1]) + C2
+
+    molecule = 'H {}; H {}; H {}; C {}; C {}; H {}; H {}; H {}'.format(str(H1)[1:-1], str(H2)[1:-1], str(H3)[1:-1],
+                                                                       str(C1)[1:-1], str(C2)[1:-1], str(H4)[1:-1],
+                                                                       str(H5)[1:-1], str(H6)[1:-1])
+
+    qubit_op, init_state = general_molecule(molecule, freeze_core, orbitals_remove, mapper_type)
+
+    if initial_state:
+        return qubit_op, init_state
+    else:
+        return qubit_op
