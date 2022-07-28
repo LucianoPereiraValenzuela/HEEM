@@ -136,7 +136,6 @@ def H2(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
 
     #   H - H
     molecule = 'H .0 .0 .0; H .0 .0 ' + str(distance)
-    print(molecule)
 
     qubit_op, init_state = _general_molecule(molecule, freeze_core, orbitals_remove, mapper_type)
 
@@ -371,7 +370,6 @@ def C2H2(distance: Optional[List[float]] = None, freeze_core: Optional[bool] = T
     H2 = str(np.array([0, 0, 2 * distance[1] + distance[0]]))[1:-1]
 
     molecule = 'H {}; C {}; C {}; H {}'.format(H1, C1, C2, H2)
-    print(molecule)
 
     qubit_op, init_state = _general_molecule(molecule, freeze_core, orbitals_remove, mapper_type)
 
