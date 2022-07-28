@@ -311,7 +311,6 @@ def send_ibmq_parallel(backend: IBMQBackend, circuits: List[QuantumCircuit],
             done, running_id, job_id = job_checker
             if done:
                 pbar.update()
-                # job_done[job_id] = running_jobs.pop(running_id)[1]
                 job_done.append(running_jobs.pop(running_id))
 
                 if max_id_sent + 1 < n_batches:  # If there is still some job to be sent
