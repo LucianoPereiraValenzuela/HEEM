@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 
 from qiskit.compiler import transpile as transpile_qiskit
 from qiskit.opflow.primitive_ops import TaperedPauliSumOp, PauliSumOp
+from qiskit.providers import Backend
+from qiskit.test.mock import FakeBackend
 
 from molecules import extract_paulis
 from utils import string2number, number2string, add_edge
@@ -227,7 +229,7 @@ def compatible_measurements(labels: np.ndarray, T: Optional[Union[List[int], Ite
                 n_counts = compatible_measurements_1q(measurement, labels[:, i])
                 CQ[i] += n_counts
                 CM[measurement] += n_counts
-                
+
     return C, CM, CQ
 
 
@@ -751,7 +753,7 @@ class Grouping:
                  transpiled_order: bool = True, pauli_graph: Optional[nx.Graph] = None, load: Optional[str] = None,
                  coeffs: Optional[Union[List[complex], np.ndarray]] = None) -> None:
         if load is None:
-            self._labels, self._coeffs = pauli_labels_numbers(labels, coeffs)  # Reformat labels and obtain coeffs
+            self._labels, self.coeffs = pauli_labels_numbers(labels, coeffs)  # Reformat labels and obtain coeffs
 
             self._connectivity = connectivity
             self._tests = tests
@@ -948,12 +950,20 @@ class Grouping:
         ax.set_xticks(np.arange(9))
         ax.set_xticklabels(labels)
 
-    def n_cnots(self, coupling_map: List[List[int]]):
-        from heem import measure_circuit_factor
+    def n_cnots(self, coupling_map: Optional[List[List[int]]] = None):
+        from heem import create_circuits
 
-        circuits = [measure_circuit_factor(measure, self._n_qubits, make_measurements=False) for measure in
-                    self.measurements]
-        circuits_transpiled = transpile_qiskit(circuits, coupling_map=coupling_map, initial_layout=self.T[::-1])
+        if (self._method == 'EM' or self._method == 'TPB') and coupling_map is None:
+            print('WARNING: No real coupling map provided, and all-to-all device is assumed.')
+
+        if coupling_map is None:
+            coupling_map = self._connectivity
+        basis_gates = ['u1', 'u2', 'u3', 'cx']
+
+        circuits = create_circuits(self.measurements, self._n_qubits, make_measurements=False)
+
+        circuits_transpiled = transpile_qiskit(circuits, coupling_map=coupling_map, basis_gates=basis_gates,
+                                               initial_layout=self.T[::-1])
 
         n_cnots = 0
         for circuit in circuits_transpiled:
@@ -961,7 +971,6 @@ class Grouping:
                 n_cnots += circuit.count_ops()['cx']
             except KeyError:
                 pass
-
         return n_cnots
 
     def _shuffle_labels(self) -> None:
