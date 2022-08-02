@@ -3,6 +3,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from typing import Optional, Union
 from utils import question
+from datetime import datetime
+
+
+def timestamp():
+    return datetime.now().strftime("%H:%M:%S, %d/%m/%Y")
 
 
 def save_figure(fig: plt.Figure, file_dic: str, dpi: Optional[int] = 600):
@@ -11,6 +16,11 @@ def save_figure(fig: plt.Figure, file_dic: str, dpi: Optional[int] = 600):
 
 
 def save_data(data: dict, file_dic: str):
+    if type(data) == dict:
+        if 'timestamp' not in data.keys():
+            data['timestamp'] = []
+        data['timestamp'].append(timestamp())
+
     np.save(file_dic, data)
 
 
