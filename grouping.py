@@ -10,8 +10,6 @@ import matplotlib.pyplot as plt
 
 from qiskit.compiler import transpile as transpile_qiskit
 from qiskit.opflow.primitive_ops import TaperedPauliSumOp, PauliSumOp
-from qiskit.providers import Backend
-from qiskit.test.mock import FakeBackend
 
 from molecules import extract_paulis
 from utils import string2number, number2string, add_edge
@@ -951,7 +949,7 @@ class Grouping:
         ax.set_xticklabels(labels)
 
     def n_cnots(self, coupling_map: Optional[List[List[int]]] = None):
-        from heem import create_circuits
+        from HEEM import create_circuits
 
         if (self._method == 'EM' or self._method == 'TPB') and coupling_map is None:
             print('WARNING: No real coupling map provided, and all-to-all device is assumed.')
