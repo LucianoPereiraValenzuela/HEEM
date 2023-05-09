@@ -5,40 +5,40 @@ from typing import Optional, Dict, Tuple, List, Union
 
 PartialMeasurement = Tuple[int, List[int]]
 
-MAPS = [{'XX': 0, 'YY': 1, 'ZZ': 2, 'II': 3},  # Bell
-        {'XX': 0, 'YZ': 1, 'ZY': 2, 'II': 3},  # Omega xx
-        {'YY': 0, 'XZ': 1, 'ZX': 2, 'II': 3},  # Omega yy
-        {'ZZ': 0, 'XY': 1, 'YX': 2, 'II': 3},  # Omega zz
-        {'XY': 0, 'YZ': 1, 'ZX': 2, 'II': 3},  # Chi
-        {'YX': 0, 'ZY': 1, 'XZ': 2, 'II': 3}]  # Chi_prime
+_MAPS = [{'XX': 0, 'YY': 1, 'ZZ': 2, 'II': 3},  # Bell
+         {'XX': 0, 'YZ': 1, 'ZY': 2, 'II': 3},  # Omega xx
+         {'YY': 0, 'XZ': 1, 'ZX': 2, 'II': 3},  # Omega yy
+         {'ZZ': 0, 'XY': 1, 'YX': 2, 'II': 3},  # Omega zz
+         {'XY': 0, 'YZ': 1, 'ZX': 2, 'II': 3},  # Chi
+         {'YX': 0, 'ZY': 1, 'XZ': 2, 'II': 3}]  # Chi_prime
 
 # Diagonal factors for expected value of one qubit, and two qubits measurements
-FACTORS_LIST = [[np.array([1, 1], dtype='int8'), np.array([1, -1], dtype='int8')],  # One qubit
-                [np.array([1, -1, 1, -1], dtype='int8'), np.array([-1, 1, 1, -1], dtype='int8'),
-                 np.array([1, 1, -1, -1], dtype='int8'), np.array([1, 1, 1, 1], dtype='int8')],  # Bell
-                [np.array([1, -1, -1, 1], dtype='int8'), np.array([-1, 1, -1, 1], dtype='int8'),
-                 np.array([-1, -1, 1, 1], dtype='int8'), np.array([1, 1, 1, 1], dtype='int8')],  # Omega xx
-                [np.array([1, -1, -1, 1], dtype='int8'), np.array([1, -1, 1, -1], dtype='int8'),
-                 np.array([1, 1, -1, -1], dtype='int8'), np.array([1, 1, 1, 1], dtype='int8')],  # Omega yy
-                [np.array([1, 1, -1, -1], dtype='int8'), np.array([-1, 1, -1, 1], dtype='int8'),
-                 np.array([-1, 1, 1, -1], dtype='int8'), np.array([1, 1, 1, 1], dtype='int8')],  # Omega zz
-                [np.array([1, -1, 1, -1], dtype='int8'), np.array([-1, 1, 1, -1], dtype='int8'),
-                 np.array([1, 1, -1, -1], dtype='int8'), np.array([1, 1, 1, 1], dtype='int8')],  # Chi
-                [np.array([-1, 1, 1, -1], dtype='int8'), np.array([1, 1, -1, -1], dtype='int8'),
-                 np.array([1, -1, 1, -1], dtype='int8'), np.array([1, 1, 1, 1], dtype='int8')]]  # Chi_prime
+_FACTORS_LIST = [[np.array([1, 1], dtype='int8'), np.array([1, -1], dtype='int8')],  # One qubit
+                 [np.array([1, -1, 1, -1], dtype='int8'), np.array([-1, 1, 1, -1], dtype='int8'),
+                  np.array([1, 1, -1, -1], dtype='int8'), np.array([1, 1, 1, 1], dtype='int8')],  # Bell
+                 [np.array([1, -1, -1, 1], dtype='int8'), np.array([-1, 1, -1, 1], dtype='int8'),
+                  np.array([-1, -1, 1, 1], dtype='int8'), np.array([1, 1, 1, 1], dtype='int8')],  # Omega xx
+                 [np.array([1, -1, -1, 1], dtype='int8'), np.array([1, -1, 1, -1], dtype='int8'),
+                  np.array([1, 1, -1, -1], dtype='int8'), np.array([1, 1, 1, 1], dtype='int8')],  # Omega yy
+                 [np.array([1, 1, -1, -1], dtype='int8'), np.array([-1, 1, -1, 1], dtype='int8'),
+                  np.array([-1, 1, 1, -1], dtype='int8'), np.array([1, 1, 1, 1], dtype='int8')],  # Omega zz
+                 [np.array([1, -1, 1, -1], dtype='int8'), np.array([-1, 1, 1, -1], dtype='int8'),
+                  np.array([1, 1, -1, -1], dtype='int8'), np.array([1, 1, 1, 1], dtype='int8')],  # Chi
+                 [np.array([-1, 1, 1, -1], dtype='int8'), np.array([1, 1, -1, -1], dtype='int8'),
+                  np.array([1, -1, 1, -1], dtype='int8'), np.array([1, 1, 1, 1], dtype='int8')]]  # Chi_prime
 
 # Write the diagonal factors using bool with the encoding (1 -> False, -1 -> True).
-FACTORS_LIST_BOOL = []
-for factors_temp in FACTORS_LIST:
-    FACTORS_LIST_BOOL.append([])
+_FACTORS_LIST_BOOL = []
+for factors_temp in _FACTORS_LIST:
+    _FACTORS_LIST_BOOL.append([])
     for factor_temp in factors_temp:
         temp = ~np.array((factor_temp + 1), dtype=bool)
 
-        FACTORS_LIST_BOOL[-1].append(temp)
+        _FACTORS_LIST_BOOL[-1].append(temp)
 
 
-def post_process_results(result: Dict[str, int], indices_dtype: Optional[str] = 'I',
-                         counts_dtype: Optional[str] = 'H') -> Tuple[np.ndarray, np.ndarray]:
+def _post_process_results(result: Dict[str, int], indices_dtype: Optional[str] = 'I',
+                          counts_dtype: Optional[str] = 'H') -> Tuple[np.ndarray, np.ndarray]:
     """
     Write the results of a quantum circuit simulation/experiment from the qiskit convention in a dic, to a sparse one,
     where the measured indices are in decimal. Only those indices that have been measured at least once are included in
@@ -211,7 +211,7 @@ def create_circuits(Measurements: Union[List[PartialMeasurement], List[List[Part
 
     Parameters
     ----------
-    Measurements: list(PartialMeasurement)
+    Measurements: list(_PartialMeasurement)
         List with all the measurements in a given grouping. The measurement is a tuple in which the first index is the
         int encoding the measurement, and the second element is another list with the indices of the measured qubits.
         The convention for the indices of the qubits is opposite to the qiskit convention. Here the qubit with higher
@@ -232,7 +232,7 @@ def create_circuits(Measurements: Union[List[PartialMeasurement], List[List[Part
     """
     initial_list = True
     if type(Measurements[0]) is tuple:
-        Measurements = list[Measurements]
+        Measurements = [Measurements]
         initial_list = False
 
     circuits = [
@@ -267,7 +267,7 @@ def probability2expected(Pauli_labels: List[str], Pauli_weights: List[complex],
         Weights of each Pauli label
     Groups: list(list(int))
         List in which each element is represented the indices of pauli string that are measured simultaneously.
-    Measurements: list(list(PartialMeasurement))
+    Measurements: list(list(_PartialMeasurement))
         List with all the measurements. Each measurement is a list in which the first index is an int encoding the
         measurement, and the second element is another list with the indices of the measured qubits. The convention for
         the indices of the qubits is opposite to the qiskit convention. Here the qubit with higher weight is named as
@@ -314,17 +314,17 @@ def probability2expected(Pauli_labels: List[str], Pauli_weights: List[complex],
                 index_measure, qubits = measurements[j]
                 if 0 < index_measure <= 3:  # Single qubit measurement
                     if pauli_labels[i][qubits[0]] == 'I':  # If the identity is grouped with another measurement
-                        diagonal_factors.append(FACTORS_LIST_BOOL[0][0])
+                        diagonal_factors.append(_FACTORS_LIST_BOOL[0][0])
                     else:  # If a Pauli matrix is measured
-                        diagonal_factors.append(FACTORS_LIST_BOOL[0][1])
+                        diagonal_factors.append(_FACTORS_LIST_BOOL[0][1])
                 elif index_measure > 3:  # Entangled qubits measurement
                     # Obtain the tensor product of pauli matrices measured
                     measure_string = pauli_labels[i][qubits[0]] + pauli_labels[i][qubits[1]]
-                    map_basis = MAPS[index_measure - 4]  # Map of tensor products of the entangled basis
-                    diagonal_factors.append(FACTORS_LIST_BOOL[index_measure - 3][map_basis[measure_string]])
+                    map_basis = _MAPS[index_measure - 4]  # Map of tensor products of the entangled basis
+                    diagonal_factors.append(_FACTORS_LIST_BOOL[index_measure - 3][map_basis[measure_string]])
                 else:
                     if swap:
-                        diagonal_factors.append(FACTORS_LIST_BOOL[0][0])
+                        diagonal_factors.append(_FACTORS_LIST_BOOL[0][0])
 
             # Generate the product tensor of all the diagonal factors
             diagonal_factors = generate_diagonal_factors(*diagonal_factors, print_progress=progress_diagonal)
@@ -338,9 +338,9 @@ def probability2expected(Pauli_labels: List[str], Pauli_weights: List[complex],
                     for qubit in qubits:
                         chain_qubits.append(qubit)
 
-                permutations = swaps(chain_qubits)
+                permutations = _swaps(chain_qubits)
                 for permutation in permutations:
-                    diagonal_factors = permute_indices(diagonal_factors, permutation[0], permutation[1], n_qubits)
+                    diagonal_factors = _permute_indices(diagonal_factors, permutation[0], permutation[1], n_qubits)
 
             diagonal_factors_temp.append(diagonal_factors)
             pbar.update()
@@ -373,7 +373,7 @@ def compute_energy(counts: List[Dict[str, int]], labels: List[str], coeffs: List
         Coefficients for each Pauli label
     Groups: list(list(int))
         Indices of the grouped Pauli labels.
-    Measurements: list(list(PartialMeasurement))
+    Measurements: list(list(_PartialMeasurement))
         List with the partial measurements for each group.
     shots: int
         Number of shots (same for all circuits)
@@ -392,7 +392,7 @@ def compute_energy(counts: List[Dict[str, int]], labels: List[str], coeffs: List
 
     energy = 0
     for i in pbar:
-        indices, values = post_process_results(counts[i])
+        indices, values = _post_process_results(counts[i])
 
         diagonals, factors = probability2expected(labels, coeffs, Groups[i], Measurements[i], **kwargs)
         diagonals = [(~diagonal * 2 - 1).astype('int8') for diagonal in diagonals[:, indices]]
@@ -401,7 +401,7 @@ def compute_energy(counts: List[Dict[str, int]], labels: List[str], coeffs: List
     return energy.real
 
 
-def swap_positions(str_variable: str, pos1: int, pos2: int) -> str:
+def _swap_positions(str_variable: str, pos1: int, pos2: int) -> str:
     """
     Swap the position of two indices of a given string.
 
@@ -424,7 +424,7 @@ def swap_positions(str_variable: str, pos1: int, pos2: int) -> str:
     return ''.join(list_variable)
 
 
-def permute_indices(diagonal_factors: np.ndarray, qubit0: int, qubit1: int, n_qubits: int) -> np.ndarray:
+def _permute_indices(diagonal_factors: np.ndarray, qubit0: int, qubit1: int, n_qubits: int) -> np.ndarray:
     """
     Permute the diagonal factors indices by the interchange of qubit_0 <---> qubit_1, maintaining all other indices the
     same.
@@ -452,7 +452,7 @@ def permute_indices(diagonal_factors: np.ndarray, qubit0: int, qubit1: int, n_qu
         new = bin(i)[2:]  # New index in binary
         if len(new) < n_qubits:  # Complete with 0's if the index is not of the correct size
             new = ''.join(['0']) * (n_qubits - len(new)) + new
-        old = swap_positions(new, qubit0, qubit1)  # Swap the indices of qubit_0 and qubit_1
+        old = _swap_positions(new, qubit0, qubit1)  # Swap the indices of qubit_0 and qubit_1
 
         # Copy the old diagonal factor in the new position
         diagonals_permuted[int(new, 2)] = diagonal_factors[int(old, 2)]
@@ -460,7 +460,7 @@ def permute_indices(diagonal_factors: np.ndarray, qubit0: int, qubit1: int, n_qu
     return diagonals_permuted
 
 
-def swaps(arr: List[int], reverse: Optional[bool] = True) -> np.ndarray:
+def _swaps(arr: List[int], reverse: Optional[bool] = True) -> np.ndarray:
     """
     Compute the needed swaps of two elements to sort a given array in descending (or ascending) order.
 
