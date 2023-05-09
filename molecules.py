@@ -12,34 +12,11 @@ from qiskit_nature.converters.second_quantization.qubit_converter import QubitCo
 from qiskit.opflow.primitive_ops import TaperedPauliSumOp, PauliSumOp
 from qiskit.exceptions import MissingOptionalLibraryError
 
-MoleculeType = Union[PauliSumOp, TaperedPauliSumOp]
-
-
-def extract_paulis(qubit_op: MoleculeType) -> Tuple[List[str], List[complex]]:
-    """
-    Extract the Pauli labels and the coefficients from a given qubit operator.
-    Parameters
-    ----------
-    qubit_op: TaperedPauliSumOp:
-        Qubit operator to which extract the information
-
-    Returns
-    -------
-    labels: list[str]
-        Pauli labels in the string convention
-    coeffs: list[complex]
-        Coefficient for each of the Pauli strings
-    """
-
-    qubit_op_data = qubit_op.primitive.to_list()
-    labels = [data[0] for data in qubit_op_data]
-    coeffs = [data[1] for data in qubit_op_data]
-
-    return labels, coeffs
+_MoleculeType = Union[PauliSumOp, TaperedPauliSumOp]
 
 
 def _general_molecule(molecule: str, freeze_core: bool, orbitals_remove: Union[None, List[int]],
-                      mapper_type: Union[None, str]) -> Union[Tuple[MoleculeType, HartreeFock], Exception]:
+                      mapper_type: Union[None, str]) -> Union[Tuple[_MoleculeType, HartreeFock], Exception]:
     """
     Compute the qubit operator and the initial Hartree Fock state of a given molecule. By default, the library
     PySCFDriver is used. If not possible to load, then  use PyQuanteDriver.
@@ -108,7 +85,7 @@ def _general_molecule(molecule: str, freeze_core: bool, orbitals_remove: Union[N
 
 def H2(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
        orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
-       mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+       mapper_type: Optional[str] = None) -> Union[_MoleculeType, Tuple[_MoleculeType, HartreeFock]]:
     """
     Qiskit operator for the H2 molecule.
 
@@ -147,7 +124,7 @@ def H2(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
 
 def LiH(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
         orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
-        mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+        mapper_type: Optional[str] = None) -> Union[_MoleculeType, Tuple[_MoleculeType, HartreeFock]]:
     """
      Qiskit operator for the LiH molecule.
 
@@ -189,7 +166,7 @@ def LiH(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
 
 def BeH2(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
          orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
-         mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+         mapper_type: Optional[str] = None) -> Union[_MoleculeType, Tuple[_MoleculeType, HartreeFock]]:
     """
     Qiskit operator for the BeH2 molecule.
 
@@ -231,7 +208,7 @@ def BeH2(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
 
 def H2O(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
         orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
-        mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+        mapper_type: Optional[str] = None) -> Union[_MoleculeType, Tuple[_MoleculeType, HartreeFock]]:
     """
      Qiskit operator for the H2O molecule.
 
@@ -276,7 +253,7 @@ def H2O(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
 
 def CH4(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
         orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
-        mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+        mapper_type: Optional[str] = None) -> Union[_MoleculeType, Tuple[_MoleculeType, HartreeFock]]:
     """
      Qiskit operator for the CH4 molecule.
 
@@ -305,22 +282,22 @@ def CH4(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
     if orbitals_remove is None:
         orbitals_remove = [7, 8]
 
-    #       H
+    #      H_1
     #       |
     #       C
     #    /  |  \
-    #   H   H   H
+    # H_3  H_2  H_4
 
     theta = 109.5
     r_inf = distance * np.cos(np.deg2rad(theta - 90))
     height_low = distance * np.sin(np.deg2rad(theta - 90))
 
-    H1 = np.array([0, 0, distance])
-    H2 = np.array([r_inf, 0, -height_low])
-    H3 = np.array([-r_inf * np.cos(np.pi / 3), r_inf * np.sin(np.pi / 3), -height_low])
-    H4 = np.array([-r_inf * np.cos(np.pi / 3), -r_inf * np.sin(np.pi / 3), -height_low])
+    H_1 = np.array([0, 0, distance])
+    H_2 = np.array([r_inf, 0, -height_low])
+    H_3 = np.array([-r_inf * np.cos(np.pi / 3), r_inf * np.sin(np.pi / 3), -height_low])
+    H_4 = np.array([-r_inf * np.cos(np.pi / 3), -r_inf * np.sin(np.pi / 3), -height_low])
 
-    molecule = 'O 0 0 0; H {}; H {}; H {}; H {}'.format(str(H1)[1:-1], str(H2)[1:-1], str(H3)[1:-1], str(H4)[1:-1])
+    molecule = 'O 0 0 0; H {}; H {}; H {}; H {}'.format(str(H_1)[1:-1], str(H_2)[1:-1], str(H_3)[1:-1], str(H_4)[1:-1])
 
     qubit_op, init_state = _general_molecule(molecule, freeze_core, orbitals_remove, mapper_type)
 
@@ -332,7 +309,7 @@ def CH4(distance: Optional[float] = None, freeze_core: Optional[bool] = True,
 
 def C2H2(distance: Optional[List[float]] = None, freeze_core: Optional[bool] = True,
          orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
-         mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+         mapper_type: Optional[str] = None) -> Union[_MoleculeType, Tuple[_MoleculeType, HartreeFock]]:
     """
      Qiskit operator for the C2H2 molecule.
 
@@ -362,14 +339,14 @@ def C2H2(distance: Optional[List[float]] = None, freeze_core: Optional[bool] = T
     if orbitals_remove is None:
         orbitals_remove = [11]
 
-    #   H(1) - C(1) - C(2) - H(2)
+    #   H_1 - C_1 - C_2 - H_2
 
-    H1 = str(np.array([0, 0, 0]))[1:-1]
-    C1 = str(np.array([0, 0, distance[1]]))[1:-1]
-    C2 = str(np.array([0, 0, distance[1] + distance[0]]))[1:-1]
-    H2 = str(np.array([0, 0, 2 * distance[1] + distance[0]]))[1:-1]
+    H_1 = str(np.array([0, 0, 0]))[1:-1]
+    C_1 = str(np.array([0, 0, distance[1]]))[1:-1]
+    C_2 = str(np.array([0, 0, distance[1] + distance[0]]))[1:-1]
+    H_2 = str(np.array([0, 0, 2 * distance[1] + distance[0]]))[1:-1]
 
-    molecule = 'H {}; C {}; C {}; H {}'.format(H1, C1, C2, H2)
+    molecule = 'H {}; C {}; C {}; H {}'.format(H_1, C_1, C_2, H_2)
 
     qubit_op, init_state = _general_molecule(molecule, freeze_core, orbitals_remove, mapper_type)
 
@@ -381,14 +358,14 @@ def C2H2(distance: Optional[List[float]] = None, freeze_core: Optional[bool] = T
 
 def CH3OH(distance: Optional[List[float]] = None, freeze_core: Optional[bool] = True,
           orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
-          mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+          mapper_type: Optional[str] = None) -> Union[_MoleculeType, Tuple[_MoleculeType, HartreeFock]]:
     """
     Qiskit operator for the BeCH3OH molecule.
 
     Parameters
     ----------
     distance: list[int] (optional, default=None)
-        Distance between hydrogen and carbon atoms (first index), and between hydrogen and oxigen atoms (second index).
+        Distance between hydrogen and carbon atoms (first index), and between hydrogen and oxygen atoms (second index).
         If not provided, [0.95, 0.5] is assumed.
     freeze_core
     orbitals_remove
@@ -408,13 +385,11 @@ def CH3OH(distance: Optional[List[float]] = None, freeze_core: Optional[bool] = 
     if distance is None:
         distance = [0.95, 0.5]
 
-    # TODO: Check which orbitals can be removed.
-    # if orbitals_remove is None:
-    #     orbitals_remove = [3, 6]
-
-    #   H(1) \
-    #   H(2) - C - O - H(4)
-    #   H(3) /
+    #   H_1
+    #       \
+    #   H_2 - C - O - H_4
+    #       /
+    #   H_3
 
     theta1 = 109.5
     theta2 = 45
@@ -422,15 +397,15 @@ def CH3OH(distance: Optional[List[float]] = None, freeze_core: Optional[bool] = 
     r_inf = distance[0] * np.cos(np.deg2rad(theta1 - 90))
     height_low = distance[0] * np.sin(np.deg2rad(theta1 - 90))
 
-    H1 = np.array([r_inf, .0, -height_low])
-    H2 = np.array([-r_inf * np.cos(np.pi / 3), r_inf * np.sin(np.pi / 3), -height_low])
-    H3 = np.array([-r_inf * np.cos(np.pi / 3), -r_inf * np.sin(np.pi / 3), -height_low])
+    H_1 = np.array([r_inf, .0, -height_low])
+    H_2 = np.array([-r_inf * np.cos(np.pi / 3), r_inf * np.sin(np.pi / 3), -height_low])
+    H_3 = np.array([-r_inf * np.cos(np.pi / 3), -r_inf * np.sin(np.pi / 3), -height_low])
     C = np.array([0, 0, 0])
     O = np.array([0., 0., height_low])
-    H4 = O + np.array([0., distance[1] * np.sin(np.deg2rad(theta2)), distance[1] * np.cos(np.deg2rad(theta2))])
+    H_4 = O + np.array([0., distance[1] * np.sin(np.deg2rad(theta2)), distance[1] * np.cos(np.deg2rad(theta2))])
 
-    molecule = 'H {}; H {}; H {}; C {}; O {}; H {}'.format(str(H1)[1:-1], str(H2)[1:-1], str(H3)[1:-1], str(C)[1:-1],
-                                                           str(O)[1:-1], str(H4)[1:-1])
+    molecule = 'H {}; H {}; H {}; C {}; O {}; H {}'.format(str(H_1)[1:-1], str(H_2)[1:-1], str(H_3)[1:-1], str(C)[1:-1],
+                                                           str(O)[1:-1], str(H_4)[1:-1])
     molecule = " ".join(re.split("\s+", molecule, flags=re.UNICODE))  # Delete duplicate white spaces
     qubit_op, init_state = _general_molecule(molecule, freeze_core, orbitals_remove, mapper_type)
 
@@ -442,7 +417,7 @@ def CH3OH(distance: Optional[List[float]] = None, freeze_core: Optional[bool] = 
 
 def C2H6(distance: Optional[List[float]] = None, freeze_core: Optional[bool] = True,
          orbitals_remove: Optional[List[int]] = None, initial_state: Optional[bool] = False,
-         mapper_type: Optional[str] = None) -> Union[MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+         mapper_type: Optional[str] = None) -> Union[_MoleculeType, Tuple[_MoleculeType, HartreeFock]]:
     """
     Qiskit operator for the C2H6 molecule.
 
@@ -469,32 +444,30 @@ def C2H6(distance: Optional[List[float]] = None, freeze_core: Optional[bool] = T
     if distance is None:
         distance = [0.95, 2]
 
-    # TODO: Check which orbitals can be removed.
-    # if orbitals_remove is None:
-    #     orbitals_remove = [3, 6]
-
-    #   H(1) \             / H(4)
-    #   H(2) - C(1) - C(2) - H(5)
-    #   H(3) /             \ H(6)
+    #   H_1                 H_4
+    #       \             /
+    #   H_2  - C_1 - C_2 - H_5
+    #       /             \
+    #   H_3                 H_6
 
     theta = 109.3
 
     r_inf = distance[0] * np.cos(np.deg2rad(theta - 90))
     height_low = distance[0] * np.sin(np.deg2rad(theta - 90))
 
-    H1 = np.array([r_inf, 0, -height_low])
-    H2 = np.array([-r_inf * np.cos(np.pi / 3), r_inf * np.sin(np.pi / 3), -height_low])
-    H3 = np.array([-r_inf * np.cos(np.pi / 3), -r_inf * np.sin(np.pi / 3), -height_low])
-    C1 = np.array([0, 0, 0])
+    H_1 = np.array([r_inf, 0, -height_low])
+    H_2 = np.array([-r_inf * np.cos(np.pi / 3), r_inf * np.sin(np.pi / 3), -height_low])
+    H_3 = np.array([-r_inf * np.cos(np.pi / 3), -r_inf * np.sin(np.pi / 3), -height_low])
+    C_1 = np.array([0, 0, 0])
 
-    C2 = C1 + np.array([0, 0, distance[1]])
-    H4 = H1 * np.array([-1, 1, 1]) + C2
-    H5 = H2 * np.array([-1, 1, 1]) + C2
-    H6 = H3 * np.array([-1, 1, 1]) + C2
+    C_2 = C_1 + np.array([0, 0, distance[1]])
+    H_4 = H_1 * np.array([-1, 1, 1]) + C_2
+    H_5 = H_2 * np.array([-1, 1, 1]) + C_2
+    H_6 = H_3 * np.array([-1, 1, 1]) + C_2
 
-    molecule = 'H {}; H {}; H {}; C {}; C {}; H {}; H {}; H {}'.format(str(H1)[1:-1], str(H2)[1:-1], str(H3)[1:-1],
-                                                                       str(C1)[1:-1], str(C2)[1:-1], str(H4)[1:-1],
-                                                                       str(H5)[1:-1], str(H6)[1:-1])
+    molecule = 'H {}; H {}; H {}; C {}; C {}; H {}; H {}; H {}'.format(str(H_1)[1:-1], str(H_2)[1:-1], str(H_3)[1:-1],
+                                                                       str(C_1)[1:-1], str(C_2)[1:-1], str(H_4)[1:-1],
+                                                                       str(H_5)[1:-1], str(H_6)[1:-1])
     molecule = " ".join(re.split("\s+", molecule, flags=re.UNICODE))  # Delete duplicate white spaces
     qubit_op, init_state = _general_molecule(molecule, freeze_core, orbitals_remove, mapper_type)
 
@@ -507,7 +480,7 @@ def C2H6(distance: Optional[List[float]] = None, freeze_core: Optional[bool] = T
 def compute_molecule(molecule_name: str, distance: Optional[float] = None, freeze_core: Optional[bool] = True,
                      orbitals_remove: Optional[List[str]] = None, initial_state: Optional[bool] = False,
                      mapper_type: Optional[str] = None, load: Optional[bool] = False) -> Union[
-    MoleculeType, Tuple[MoleculeType, HartreeFock]]:
+    _MoleculeType, Tuple[_MoleculeType, HartreeFock]]:
     """
     Compute the molecule qubit operator. If previously compute, it can also be loaded. If desired, the initial Hartree
     Fock circuit can be returned.
