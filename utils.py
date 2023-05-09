@@ -12,9 +12,10 @@ from qiskit.circuit import QuantumCircuit
 from qiskit.providers import JobStatus
 from qiskit.providers.ibmq.job import IBMQJob
 from qiskit.providers.ibmq import IBMQBackend
+from qiskit.opflow.primitive_ops import TaperedPauliSumOp, PauliSumOp
 
 
-def question(name: Optional[str] = None, message: Optional[str] = None) -> bool:
+def _question(name: Optional[str] = None, message: Optional[str] = None) -> bool:
     """
     Make a question and return True or False depending on the answer of the user. There is only two possible answers
     y -> yes or	n -> no. If the answer is none of this two the question is repeated until a good answer is given.
@@ -42,16 +43,14 @@ def question(name: Optional[str] = None, message: Optional[str] = None) -> bool:
         return False
     else:  # If the answer is not correct
         print('I didn\'t understand your answer.')
-        return question(name=name, message=message)  # The function will repeat until a correct answer if provided
+        return _question(name=name, message=message)  # The function will repeat until a correct answer if provided
 
 
 def random_labels(n: int, N: int) -> np.ndarray:
     """
     Return a total of n Pauli strings of N qubits.
     """
-    labels = []
-    for i in range(n):
-        labels.append(np.random.randint(4, size=N))
+    labels = [np.random.randint(4, size=N) for _ in range(n)]
     return np.array(labels)
 
 
@@ -134,7 +133,7 @@ def tqdm_joblib(tqdm_object):
         tqdm_object.close()
 
 
-def check_status_jobs(running: List[Tuple[int, IBMQJob]], n_batches: int, verbose: Optional[bool] = False) -> Union[
+def _check_status_jobs(running: List[Tuple[int, IBMQJob]], n_batches: int, verbose: Optional[bool] = False) -> Union[
     None, Tuple[bool, int, int]]:
     """
     Check is some job is completed in order to send the next one. If some job has raised an error, then return it so
@@ -177,9 +176,9 @@ def check_status_jobs(running: List[Tuple[int, IBMQJob]], n_batches: int, verbos
             return False, j, index
 
 
-def send_job_backend(backend: IBMQBackend, circuits_batch: List[QuantumCircuit], index: Optional[int] = 0,
-                     n_batches: Optional[int] = 1, job_tags: Optional[Union[str, List[str]]] = None,
-                     verbose: Optional[bool] = True, **kwargs_run: dict) -> IBMQJob:
+def _send_job_backend(backend: IBMQBackend, circuits_batch: List[QuantumCircuit], index: Optional[int] = 0,
+                      n_batches: Optional[int] = 1, job_tags: Optional[Union[str, List[str]]] = None,
+                      verbose: Optional[bool] = True, **kwargs_run: dict) -> IBMQJob:
     """
     Send a job to ibm with a series of circuits.
     Parameters
@@ -205,9 +204,8 @@ def send_job_backend(backend: IBMQBackend, circuits_batch: List[QuantumCircuit],
         Job sent to IBMQ.
     """
 
-    if job_tags is not None:
-        if type(job_tags) is not list:
-            job_tags = [job_tags]
+    if job_tags is not None and type(job_tags) is not list:
+        job_tags = [job_tags]
 
     job_name = '{}/{}'.format(index + 1, n_batches)
 
@@ -220,7 +218,7 @@ def send_job_backend(backend: IBMQBackend, circuits_batch: List[QuantumCircuit],
 
 
 def send_ibmq_parallel(backend: IBMQBackend, circuits: List[QuantumCircuit],
-                       job_tags: Optional[Union[str, List[str]]] = None, verbose: Optional[bool] = True,
+                       job_tags: Optional[Union[str, List[str]]] = None, verbose: Optional[bool] = False,
                        progress_bar: Optional[bool] = False, circuits_batch_size: Optional[int] = 300,
                        n_jobs_parallel: Optional[int] = 5, waiting_time: Optional[int] = 20, **kwargs_run: dict) -> \
         List[IBMQJob]:
@@ -262,7 +260,7 @@ def send_ibmq_parallel(backend: IBMQBackend, circuits: List[QuantumCircuit],
 
     n_active_jobs = backend.job_limit().active_jobs
     if n_active_jobs != 0:
-        delete_jobs = question(
+        delete_jobs = _question(
             message='There are {} active jobs in the backed. Do you want to cancel them?'.format(n_active_jobs))
 
         if delete_jobs:
@@ -296,14 +294,14 @@ def send_ibmq_parallel(backend: IBMQBackend, circuits: List[QuantumCircuit],
 
     # Send the initial jobs
     for i, index in enumerate(indices[:n_jobs_parallel]):
-        job = send_job_backend(backend, circuits[index[0]:index[1]], index=i, n_batches=n_batches, job_tags=job_tags,
-                               verbose=verbose, **kwargs_run)
+        job = _send_job_backend(backend, circuits[index[0]:index[1]], index=i, n_batches=n_batches, job_tags=job_tags,
+                                verbose=verbose, **kwargs_run)
         running_jobs.append((i, job))
 
     max_id_sent = n_jobs_parallel - 1
 
     while len(running_jobs) > 0:  # Iterate until all jobs are completed
-        job_checker = check_status_jobs(running_jobs, n_batches, verbose=verbose)
+        job_checker = _check_status_jobs(running_jobs, n_batches, verbose=verbose)
         if verbose:
             print('Finish checking')
 
@@ -315,15 +313,15 @@ def send_ibmq_parallel(backend: IBMQBackend, circuits: List[QuantumCircuit],
 
                 if max_id_sent + 1 < n_batches:  # If there is still some job to be sent
                     max_id_sent += 1
-                    job = send_job_backend(backend, circuits[indices[max_id_sent][0]:indices[max_id_sent][1]],
-                                           index=max_id_sent, n_batches=n_batches, job_tags=job_tags, verbose=verbose,
-                                           **kwargs_run)
+                    job = _send_job_backend(backend, circuits[indices[max_id_sent][0]:indices[max_id_sent][1]],
+                                            index=max_id_sent, n_batches=n_batches, job_tags=job_tags, verbose=verbose,
+                                            **kwargs_run)
 
                     running_jobs.append((max_id_sent, job))
             else:  # Resend the failed job
                 running_jobs.pop(running_id)
-                job = send_job_backend(backend, circuits[indices[job_id][0]:indices[job_id][1]], index=job_id,
-                                       n_batches=n_batches, job_tags=job_tags, verbose=verbose, **kwargs_run)
+                job = _send_job_backend(backend, circuits[indices[job_id][0]:indices[job_id][1]], index=job_id,
+                                        n_batches=n_batches, job_tags=job_tags, verbose=verbose, **kwargs_run)
                 running_jobs.append((job_id, job))
         else:
             time.sleep(waiting_time)  # Wait some time for the next status, so IBMQ do not detect lots of petitions
@@ -332,3 +330,26 @@ def send_ibmq_parallel(backend: IBMQBackend, circuits: List[QuantumCircuit],
     job_done = [x[1] for x in sorted(job_done, key=lambda x: x[0])]  # Sort the jobs using their job_id
 
     return job_done
+
+
+def extract_paulis(qubit_op: Union[PauliSumOp, TaperedPauliSumOp]) -> Tuple[List[str], List[complex]]:
+    """
+    Extract the Pauli labels and the coefficients from a given qubit operator.
+    Parameters
+    ----------
+    qubit_op: TaperedPauliSumOp:
+        Qubit operator to which extract the information
+
+    Returns
+    -------
+    labels: list[str]
+        Pauli labels in the string convention
+    coeffs: list[complex]
+        Coefficient for each of the Pauli strings
+    """
+
+    qubit_op_data = qubit_op.primitive.to_list()
+    labels = [data[0] for data in qubit_op_data]
+    coeffs = [data[1] for data in qubit_op_data]
+
+    return labels, coeffs
