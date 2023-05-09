@@ -2,24 +2,24 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import Optional, Union
-from utils import question
+from utils import _question
 from datetime import datetime
 
 
-def timestamp():
+def _timestamp():
     return datetime.now().strftime("%H:%M:%S, %d/%m/%Y")
 
 
-def save_figure(fig: plt.Figure, file_dic: str, dpi: Optional[int] = 600):
+def _save_figure(fig: plt.Figure, file_dic: str, dpi: Optional[int] = 600):
     # Save the figure with the corresponding file direction and the correct extension
     fig.savefig(file_dic, bbox_inches="tight", dpi=dpi)
 
 
-def save_data(data: dict, file_dic: str):
+def _save_data(data: dict, file_dic: str):
     if type(data) == dict:
         if 'timestamp' not in data.keys():
             data['timestamp'] = []
-        data['timestamp'].append(timestamp())
+        data['timestamp'].append(_timestamp())
 
     np.save(file_dic, data)
 
@@ -50,10 +50,10 @@ def save_object(object_save: Union[dict, plt.Figure], name: str, overwrite: Opti
     # Check the type of the data
     if type(object_save) is plt.Figure:
         object_type = 'figure'
-        save_function = save_figure
+        save_function = _save_figure
     else:
         object_type = 'data'
-        save_function = save_data
+        save_function = _save_data
 
     if dic is None:
         dic = 'data/'
@@ -84,7 +84,7 @@ def save_object(object_save: Union[dict, plt.Figure], name: str, overwrite: Opti
     if overwrite is None:  # If the user does not give a preference for the overwriting
         if os.path.isfile(file_dic + '.' + extension):  # If the file exists in the folder
             if ask:  # The function will ask if the user want to overwrite the file
-                overwrite = question(name=file_dic + '.' + extension)
+                overwrite = _question(name=file_dic + '.' + extension)
             else:
                 overwrite = False
         else:
