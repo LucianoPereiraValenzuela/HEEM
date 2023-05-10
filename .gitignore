@@ -1,29 +1,7 @@
-
 .DS_Store
 *.iml
 *.xml
 .ipynb_checkpoints
-Codes/test_plot_code_with_me.py
-Codes/my_tests_qiskit.py
-Codes/deprecated/my_tests_qiskit.py
-Codes/deprecated/test_plot_code_with_me.py
 *.pyc
-Codes/Some stuff.nb
-Codes/mis mierdas.ipynb
-*.out
-Codes/examples/tmp24mq6dix
-
-Codes/.idea/*
-/Codes/data/**/*.npy
-Codes/data/Backup/*.npy
-Codes/data/old/*
-
-Paper
-Codes/tests
-
-Codes/examples/progress_*.txt
-
-Codes/examples/*_exact_job_ids.npy
-
-Notes
-instructions_energy_error.txt
+.idea/*
+tests.ipynb
