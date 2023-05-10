@@ -13,7 +13,7 @@ Both difficulties have been studied independently. Can they be tackled simultane
 
 We propose to use Hardware-Efficient Entangled Measurements (HEEM), which are measurements that take advantage of entanglement between neighboring qubits according to the device’s architecture. The usage of HEEM reduces the number of measurements needed to perform VQE without compromising the quality of the experiment.
 
-In this repo we implement the VQE algorithm using HEEM to estimate the energy of some simple molecules such as $BeH_2$ or $H_2O$. 
+In this repo we implement the VQE algorithm using HEEM to estimate the energy of some simple molecules such as $\text{BeH}_2$ or $\text{H}_2\text{O}$. 
 
 If you find this repository useful, please consider citing the article [arXiv: 2202.06979](https://arxiv.org/abs/2202.06979).
 
@@ -29,14 +29,14 @@ The main scrips are located in the root folder. Inside [`examples`](https://gith
 ## Usage
 ### Define the Hamiltonian
 First you need to define the Pauli string of interest. This can be easily done using `compute_molecule(<molecule_name>)`, located inside [`molecules.py`](https://github.com/LucianoPereiraValenzuela/HEEM/blob/main/molecules.py). Here we have predefined a total of eigth molecules
-- H2
-- LiH
-- BeH2
-- H2O
-- CH4
-- C2H2
-- CH3OH
-- C2H6
+- $\text{H}_2$
+- $\text{LiH}$
+- $\text{BeH}_2$
+- $\text{H}_2\text{O}$
+- $\text{CH}_4$
+- $\text{C}_2\text{H}_2$
+- $\text{CH}_3\text{OH}$
+- $\text{C}_2\text{H}_6$
 
 Other molecules (or different Hamiltonians) can be included by providing the Pauli string as a `TaperedPauliSumOp` or a `PauliSumOp`. Also, the user can define the Pauli string as two lists, one with the strings definind the operators over each qubit, and the second one which contain the weights of each operator.
 
@@ -50,10 +50,18 @@ In order to obtain the results, you can use
 
 Other methods have been included to visualize the grouping and the transpiled measurements such as `Grouping.draw_entangled_measurements()` or `Group.draw_transpiled_chip`. You can look at the source code for more info.
 
+In the following figure you can find the results obtained with different grouping methods: TPB(🔴), EM(🟢), HEEM(🔵).
+![scalling](https://github.com/LucianoPereiraValenzuela/HEEM/assets/11279156/4c2aea9e-b783-4edc-a0d1-7c6655ab58ce)
+
+
 ### Measure the energy
 After performing the grouping fot he Pauli string, we need to obtain the actual `QuantumCircuits` that must be simulated/send to IBMQ, which can be done with the `create_circuits()` function located inside [`measurements.py`](https://github.com/LucianoPereiraValenzuela/HEEM/blob/main/measurements.py). The number of circuits that must be simulated can be quite large, so we have created `send_ibmq_parallel()` inside [`utils.py`](https://github.com/LucianoPereiraValenzuela/HEEM/blob/main/utils.py) to send all the circuits to IBMQ, which are then distributed in different batches and send in parallel for simulating then inside the HPC IBM backed.
 
 Once you have the counts of the different quantum circuits, you must use the function `compute_energy()` inside [`measurements.py`](https://github.com/LucianoPereiraValenzuela/HEEM/blob/main/measurements.py) to postprocress the result and obtain the expected energy of the provided Hamiltonian.
+
+### Compute
+All the above functions are wrapped inside the `VQE()` class, given in [`VQE.py`](https://github.com/LucianoPereiraValenzuela/HEEM/blob/main/VQE.py). This class is used to perform a variational search, given an initial circuit, in order to find the ground state of the provided Hamiltonian. In the following figure there is an example of VQE simulated (a), and the experimental impementation (b) of the $\text{H}_2\text{O}$ molecule for TPB(🟠), EM(🟢), HEEM(🔵).
+<img src="https://github.com/LucianoPereiraValenzuela/HEEM/assets/11279156/44704c61-5264-4baf-89d1-fd2cc933c144" width="50%">
 
 ## References
 [1] A. Kandala, et. al, Nature **549**, 242-246 (2017)   
