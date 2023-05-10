@@ -61,6 +61,7 @@ Once you have the counts of the different quantum circuits, you must use the fun
 
 ### Compute
 All the above functions are wrapped inside the `VQE()` class, given in [`VQE.py`](https://github.com/LucianoPereiraValenzuela/HEEM/blob/main/VQE.py). This class is used to perform a variational search, given an initial circuit, in order to find the ground state of the provided Hamiltonian. In the following figure there is an example of VQE simulated (a), and the experimental impementation (b) of the $\text{H}_2\text{O}$ molecule for TPB(🔵), EM(🟠), HEEM(🟢).
+
 <img src="https://github.com/LucianoPereiraValenzuela/HEEM/assets/11279156/44704c61-5264-4baf-89d1-fd2cc933c144" width="50%">
 
 ## References
