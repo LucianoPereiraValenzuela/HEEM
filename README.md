@@ -18,9 +18,36 @@ In this repo we implement the VQE algorithm using HEEM to estimate the energy of
 If you find this repository useful, please consider citing the article [arXiv: 2202.06979](https://arxiv.org/abs/2202.06979).
 
 ## Dependencies
-The required packages, together with their versions, are located in [`requirements.txt`](https://github.com/LucianoPereiraValenzuela/HEEM/blob/main/requirements.txt). In order to create a conda enviroment with all the packages use the following command:
+The required packages, together with their (security-patched) version
+constraints, are listed in
+[`requirements.txt`](https://github.com/LucianoPereiraValenzuela/HEEM/blob/main/requirements.txt).
+Note that the code targets the Qiskit `0.x` API (it uses `qiskit.opflow`,
+`qiskit.providers.ibmq`, and the `qiskit_nature.*.second_quantization`
+namespace), so the Qiskit versions are pinned to the last patched releases of
+that line: `qiskit==0.46.3` (which contains the fix for CVE-2025-2000) and
+`qiskit-nature==0.6.2`.
+
+> [!IMPORTANT]
+> **Use Python 3.9, 3.10, or 3.11.** Python 3.12+ is *not* supported because
+> `qiskit-ibmq-provider` (a hard dependency of the legacy IBMQ code paths used
+> by HEEM) constrains `requests-ntlm<=1.1.0`, which transitively forces an old
+> `numpy` source build that fails on Python 3.12. A future migration to
+> Qiskit 2.x will lift this restriction.
+
+To create an environment with all the packages installed, create a fresh
+Python 3.9–3.11 environment and run:
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
-conda create --name <env> --file <this file>
+
+For example with `conda`:
+
+```bash
+conda create --name heem python=3.10
+conda activate heem
+python -m pip install -r requirements.txt
 ```
 
 ## Folders
