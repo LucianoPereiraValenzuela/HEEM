@@ -15,7 +15,7 @@ We propose to use Hardware-Efficient Entangled Measurements (HEEM), which are me
 
 In this repo we implement the VQE algorithm using HEEM to estimate the energy of some simple molecules such as $\text{BeH}_2$ or $\text{H}_2\text{O}$. 
 
-If you find this repository useful, please consider citing the article [arXiv: 2202.06979](https://arxiv.org/abs/2202.06979).
+If you find this repository useful, please consider citing the article [Phys. Rev. Applied **20**, 034044](https://doi.org/10.1103/PhysRevApplied.20.034044).
 
 ## Dependencies
 The required packages, together with their (security-patched) version
